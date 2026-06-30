@@ -6,90 +6,340 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>1000</width>
+    <height>700</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Sensor Telemetry System</string>
+   <string>Мониторинг систем</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true">
+    /* Основной фон – тёмно-синий, чтобы меньше белого */
+    QMainWindow {
+        background-color: #1e293b;
+        font-family: "Segoe UI", Roboto, sans-serif;
+        font-size: 13px;
+        color: #e2e8f0;
+    }
+
+    /* Группы – карточки с тенью, светлый фон */
+    QGroupBox {
+        background-color: #f1f5f9;
+        border: 1px solid #334155;
+        border-radius: 10px;
+        margin-top: 0.8ex;
+        font-weight: 600;
+        padding-top: 14px;
+        color: #0f172a;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 14px;
+        padding: 0 10px;
+        background-color: #1e293b;
+        color: #f8fafc;
+        border-radius: 4px;
+        padding: 2px 12px;
+        font-size: 13px;
+    }
+
+    /* Таблица – тёмная тема для инженерного вида */
+    QTableView {
+        background-color: #0f172a;
+        alternate-background-color: #1e293b;
+        gridline-color: #334155;
+        border: 1px solid #334155;
+        border-radius: 6px;
+        selection-background-color: #3b82f6;
+        selection-color: #ffffff;
+        color: #e2e8f0;
+    }
+    QHeaderView::section {
+        background-color: #1e293b;
+        padding: 6px 12px;
+        border: none;
+        border-bottom: 2px solid #3b82f6;
+        font-weight: 600;
+        color: #94a3b8;
+    }
+    QTableView::item {
+        padding: 4px 8px;
+    }
+
+    /* Поля ввода – тёмные, но читаемые */
+    QComboBox, QSpinBox, QDoubleSpinBox, QDateTimeEdit {
+        border: 1px solid #475569;
+        border-radius: 6px;
+        padding: 4px 8px;
+        background-color: #0f172a;
+        color: #f1f5f9;
+        min-height: 26px;
+    }
+    QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus, QDateTimeEdit:focus {
+        border-color: #3b82f6;
+        outline: none;
+    }
+    QComboBox::drop-down {
+        border: none;
+        background-color: #1e293b;
+    }
+    QComboBox QAbstractItemView {
+        background-color: #0f172a;
+        color: #f1f5f9;
+        selection-background-color: #3b82f6;
+    }
+
+    /* Кнопки – яркие, с эффектами */
+    QPushButton {
+        border: none;
+        border-radius: 6px;
+        padding: 5px 16px;
+        font-weight: 600;
+        font-size: 13px;
+        min-height: 26px;
+        color: white;
+        background-color: #3b82f6;
+    }
+    QPushButton:hover {
+        background-color: #2563eb;
+    }
+    QPushButton:pressed {
+        background-color: #1d4ed8;
+    }
+
+    /* Разные кнопки – разный цвет */
+    QPushButton#applyFilterButton {
+        background-color: #8b5cf6;
+    }
+    QPushButton#applyFilterButton:hover {
+        background-color: #7c3aed;
+    }
+    QPushButton#applyFieldButton {
+        background-color: #64748b;
+    }
+    QPushButton#applyFieldButton:hover {
+        background-color: #475569;
+    }
+    QPushButton#connectButton {
+        background-color: #10b981;
+    }
+    QPushButton#connectButton:hover {
+        background-color: #059669;
+    }
+
+    /* Оверлей загрузки */
+    QWidget#loadingOverlay {
+        background-color: rgba(15, 23, 42, 0.85);
+        border-radius: 8px;
+    }
+    QLabel#loadingTextLabel {
+        color: #94a3b8;
+        font-size: 15px;
+    }
+    QLabel#spinnerAnimationLabel {
+        color: #3b82f6;
+    }
+   </string>
+  </property>
+
   <widget class="QWidget" name="centralwidget">
-   <!-- Главная вертикальная компоновка: таблица сверху, панель снизу -->
-   <layout class="QVBoxLayout" name="mainVerticalLayout">
-    <property name="spacing">
-     <number>10</number>
-    </property>
-    <property name="leftMargin">
-     <number>10</number>
-    </property>
-    <property name="topMargin">
-     <number>10</number>
-    </property>
-    <property name="rightMargin">
-     <number>10</number>
-    </property>
-    <property name="bottomMargin">
-     <number>10</number>
-    </property>
-    
-    <!-- 1. Таблица (Занимает всё свободное место) -->
+   <layout class="QVBoxLayout" name="mainLayout">
+    <property name="leftMargin"><number>12</number></property>
+    <property name="topMargin"><number>12</number></property>
+    <property name="rightMargin"><number>12</number></property>
+    <property name="bottomMargin"><number>12</number></property>
+    <property name="spacing"><number>10</number></property>
+
+    <!-- 1. Группа таблицы – растягивается через sizePolicy -->
     <item>
-     <widget class="QTableView" name="SystemTableView">
-      <property name="sortingEnabled">
-       <bool>true</bool>
+     <widget class="QGroupBox" name="groupBoxTable">
+      <property name="title">
+       <string>Данные</string>
       </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>1</horstretch>
+        <verstretch>1</verstretch>
+       </sizepolicy>
+      </property>
+      <layout class="QVBoxLayout" name="tableGroupLayout">
+       <property name="leftMargin"><number>5</number></property>
+       <property name="topMargin"><number>5</number></property>
+       <property name="rightMargin"><number>5</number></property>
+       <property name="bottomMargin"><number>5</number></property>
+       <item>
+        <widget class="QStackedWidget" name="tableStackedWidget">
+         <widget class="QWidget" name="tablePage">
+          <layout class="QVBoxLayout" name="tablePageLayout">
+           <property name="leftMargin"><number>0</number></property>
+           <property name="topMargin"><number>0</number></property>
+           <property name="rightMargin"><number>0</number></property>
+           <property name="bottomMargin"><number>0</number></property>
+           <item>
+            <widget class="QTableView" name="SystemTableView">
+             <property name="sortingEnabled"><bool>true</bool></property>
+             <property name="alternatingRowColors"><bool>true</bool></property>
+             <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="loadingPage">
+          <layout class="QVBoxLayout" name="loadingPageLayout">
+           <property name="leftMargin"><number>0</number></property>
+           <property name="topMargin"><number>0</number></property>
+           <property name="rightMargin"><number>0</number></property>
+           <property name="bottomMargin"><number>0</number></property>
+           <item>
+            <widget class="QWidget" name="loadingOverlay" native="true">
+             <property name="visible"><bool>false</bool></property>
+             <layout class="QGridLayout" name="overlayLayout">
+              <item row="0" column="0">
+               <widget class="QWidget" name="loadingCard" native="true">
+                <property name="minimumSize"><size><width>260</width><height>120</height></size></property>
+                <layout class="QVBoxLayout" name="cardLayout">
+                 <item>
+                  <widget class="QLabel" name="spinnerAnimationLabel">
+                   <property name="alignment"><set>Qt::AlignCenter</set></property>
+                   <property name="text"><string>⟳</string></property>
+                   <property name="font"><font><pointsize>28</pointsize></font></property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="loadingTextLabel">
+                   <property name="text"><string>Загрузка данных...</string></property>
+                   <property name="alignment"><set>Qt::AlignCenter</set></property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+      </layout>
      </widget>
     </item>
-    
-    <!-- 2. Нижняя панель управления командами -->
+
+    <!-- 2. Группа фильтра -->
     <item>
-     <layout class="QHBoxLayout" name="controlPanelLayout">
-      <!-- Элемент-пружина (Spacer), сдвигающий кнопки в правый угол -->
-      <item>
-       <spacer name="horizontalSpacer">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      
-      <!-- Кнопка подключения -->
-      <item>
-       <widget class="QPushButton" name="connectButton">
-        <property name="minimumSize">
-         <size>
-          <width>120</width>
-          <height>35</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>Connect</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
+     <widget class="QGroupBox" name="groupBoxFilter">
+      <property name="title">
+       <string>Фильтр</string>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <layout class="QHBoxLayout" name="filterLayout">
+       <property name="leftMargin"><number>10</number></property>
+       <property name="topMargin"><number>8</number></property>
+       <property name="rightMargin"><number>10</number></property>
+       <property name="bottomMargin"><number>8</number></property>
+       <property name="spacing"><number>8</number></property>
+       <item>
+        <widget class="QComboBox" name="filterFieldComboBox">
+         <property name="minimumSize"><size><width>140</width><height>30</height></size></property>
+         <property name="maximumSize"><size><width>140</width><height>30</height></size></property>
+         <property name="toolTip"><string>Поле для фильтра</string></property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="conditionComboBox">
+         <property name="minimumSize"><size><width>140</width><height>30</height></size></property>
+         <property name="maximumSize"><size><width>140</width><height>30</height></size></property>
+         <property name="toolTip"><string>Условие</string></property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QStackedWidget" name="filterValueStack">
+         <property name="minimumSize"><size><width>180</width><height>30</height></size></property>
+         <property name="maximumSize"><size><width>180</width><height>30</height></size></property>
+         <widget class="QWidget" name="pageSpinBox">
+          <layout class="QHBoxLayout"><property name="margin"><number>0</number></property><item><widget class="QSpinBox" name="filterSpinBox"><property name="maximum"><number>999999</number></property></widget></item></layout>
+         </widget>
+         <widget class="QWidget" name="pageDoubleSpinBox">
+          <layout class="QHBoxLayout"><property name="margin"><number>0</number></property><item><widget class="QDoubleSpinBox" name="filterDoubleSpinBox"><property name="decimals"><number>4</number></property><property name="maximum"><number>999999</number></property></widget></item></layout>
+         </widget>
+         <widget class="QWidget" name="pageDateTime">
+          <layout class="QHBoxLayout"><property name="margin"><number>0</number></property><item><widget class="QDateTimeEdit" name="filterDateTimeEdit"><property name="calendarPopup"><bool>true</bool></property></widget></item></layout>
+         </widget>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="applyFilterButton">
+         <property name="minimumSize"><size><width>150</width><height>30</height></size></property>
+         <property name="maximumSize"><size><width>150</width><height>30</height></size></property>
+         <property name="text"><string>Применить фильтр</string></property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="fSpacer">
+         <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
     </item>
-    
+
+    <!-- 3. Группа управления -->
+    <item>
+     <widget class="QGroupBox" name="groupBoxControl">
+      <property name="title">
+       <string>Управление</string>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <layout class="QHBoxLayout" name="ctrlLayout">
+       <property name="leftMargin"><number>10</number></property>
+       <property name="topMargin"><number>8</number></property>
+       <property name="rightMargin"><number>10</number></property>
+       <property name="bottomMargin"><number>8</number></property>
+       <property name="spacing"><number>8</number></property>
+       <item>
+        <widget class="QComboBox" name="fieldComboBox">
+         <property name="minimumSize"><size><width>150</width><height>30</height></size></property>
+         <property name="maximumSize"><size><width>150</width><height>30</height></size></property>
+         <property name="toolTip"><string>Выберите поле</string></property>
+         <item><property name="text"><string>ID</string></property></item>
+         <item><property name="text"><string>Sensor ID</string></property></item>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="applyFieldButton">
+         <property name="minimumSize"><size><width>130</width><height>30</height></size></property>
+         <property name="maximumSize"><size><width>130</width><height>30</height></size></property>
+         <property name="text"><string>Применить поле</string></property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="hSpacer">
+         <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QPushButton" name="connectButton">
+         <property name="minimumSize"><size><width>130</width><height>30</height></size></property>
+         <property name="maximumSize"><size><width>130</width><height>30</height></size></property>
+         <property name="text"><string>Подключиться</string></property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>800</width>
-     <height>22</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <resources/>
- <connections/>
 </ui>

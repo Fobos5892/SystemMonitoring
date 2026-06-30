@@ -1,0 +1,43 @@
+# Qt Creator
+*.pro.user
+*.pro.user.*
+.qtcreator/
+
+# Build output
+build/
+*-build/
+debug/
+release/
+
+# qmake / make
+Makefile*
+*.stash
+object_script.*
+
+# Generated Qt files
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+*.moc
+
+# Compiled objects and binaries
+*.o
+*.obj
+*.exe
+*.dll
+*.a
+*.lib
+*.so
+*.dylib
+
+# IDE / language server cache
+.qtc_clangd/
+compile_commands.json
+*.idx
+
+# Preprocessor output
+*.i
+
+# Runtime database
+*.db
+telemetry.db

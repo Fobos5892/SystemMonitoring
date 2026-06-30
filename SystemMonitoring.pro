@@ -1,18 +1,29 @@
-QT += widgets
+QT += core gui widgets sql
 
-CONFIG += c++17
+CONFIG += c++20 console
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    DBConnect/dbconnect.cpp \
+    DBModel/dbconnect.cpp \
+    DBModel/dbdatacontroll.cpp \
+    DeviceReceiver/devicereceiver.cpp \
+    DeviceSimulator/devicesimulator.cpp \
+    ThreadOrchestrator/threadorchestrator.cpp \
+    ViewModels/sensormodel.cpp \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
-    DBConnect/dbconnect.h \
+    Data/sensordata.h \
+    DBModel/dbconnect.h \
+    DBModel/dbdatacontroll.h \
+    DeviceReceiver/devicereceiver.h \
+    DeviceSimulator/devicesimulator.h \
+    ThreadOrchestrator/threadorchestrator.h \
+    ViewModels/sensormodel.h \
     mainwindow.h
 
 FORMS += \
