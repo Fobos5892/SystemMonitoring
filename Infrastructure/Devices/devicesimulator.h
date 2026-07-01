@@ -6,7 +6,7 @@
 #include <QVector>
 #include <QRandomGenerator>
 #include <QDateTime>
-#include "Data/sensordata.h"
+#include "Domain/sensordata.h"
 
 class DeviceSimulator : public QObject {
     Q_OBJECT

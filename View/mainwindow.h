@@ -2,8 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "Data/sensorstatistics.h"
-#include "ViewModels/sensormodel.h"
+#include "Domain/telemetrytypes.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -11,7 +10,9 @@ class MainWindow;
 }
 QT_END_NAMESPACE
 
-class ThreadOrchestrator;
+class TelemetryFacade;
+class TelemetryTableModel;
+class TelemetryViewModel;
 
 class MainWindow : public QMainWindow
 {
@@ -21,25 +22,26 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
-    SensorModel* getModel() const { return m_model; }
+    TelemetryTableModel* getTableModel() const;
 
 private slots:
     void onConnectButtonClicked();
     void onClearDatabaseClicked();
     void onApplyFilterClicked();
     void onFilterFieldChanged(int index);
-    void onSensorStatisticsUpdated(const SensorStatistics &stats);
+    void onStatisticsLabelsChanged();
 
 private:
+    void syncFilterViewModelFromUi();
     void normalizeNumericFilterInputs();
     void setGenerationRunning(bool running);
     void setLoadingOverlayVisible(bool visible);
     void setControlsEnabled(bool enabled);
-    QString buildFilterCondition() const;
+    void bindStatisticsLabels();
+    void updateFollowMode();
 
     Ui::MainWindow *ui;
-    SensorModel *m_model = nullptr;
-    ThreadOrchestrator *m_orchestrator = nullptr;
-    bool m_isGenerating = false;
+    TelemetryFacade *facade = nullptr;
+    bool isGenerating = false;
 };
 #endif // MAINWINDOW_H

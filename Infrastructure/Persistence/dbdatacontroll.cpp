@@ -24,8 +24,8 @@ SensorData readSensorRow(const QSqlQuery &query) {
  * @ascending - порядок сортировки таблицы
  * @side - Top: строки выше якоря, Bottom: строки ниже якоря
  */
-QString getNewDataNearAnchor(const QString &column, bool ascending, DBDataControll::AnchorSide side) {
-    const bool useGreater = (side == DBDataControll::AnchorSide::Bottom) == ascending;
+QString getNewDataNearAnchor(const QString &column, bool ascending, Telemetry::AnchorSide side) {
+    const bool useGreater = (side == Telemetry::AnchorSide::Bottom) == ascending;
     if (useGreater) {
         return QStringLiteral("(t.%1 > a.%1) OR (t.%1 = a.%1 AND t.id > a.id)").arg(column);
     }
@@ -38,8 +38,8 @@ QString getNewDataNearAnchor(const QString &column, bool ascending, DBDataContro
  * @ascending - порядок сортировки таблицы
  * @side - Top: строки выше якоря, Bottom: строки ниже якоря
  */
-QString orderByClause(const QString &column, bool ascending, DBDataControll::AnchorSide side) {
-    const bool orderAscending = side == DBDataControll::AnchorSide::Bottom ? ascending : !ascending;
+QString orderByClause(const QString &column, bool ascending, Telemetry::AnchorSide side) {
+    const bool orderAscending = side == Telemetry::AnchorSide::Bottom ? ascending : !ascending;
     const QString direction = orderAscending ? QStringLiteral("ASC") : QStringLiteral("DESC");
     return QStringLiteral("t.%1 %2, t.id %2").arg(column, direction);
 }
@@ -54,7 +54,7 @@ QString orderByClause(const QString &column, bool ascending, DBDataControll::Anc
  */
 QVector<SensorData> loadRangeNearAnchor(quint64 anchorRecordId, int limit,
                                         const QString &column, bool ascending,
-                                        DBDataControll::AnchorSide side) {
+                                        Telemetry::AnchorSide side) {
     QVector<SensorData> result;
     result.reserve(limit);
 
@@ -78,7 +78,7 @@ QVector<SensorData> loadRangeNearAnchor(quint64 anchorRecordId, int limit,
         qCritical() << "Ошибка range-запроса в SQL:" << query.lastError().text();
     }
 
-    if (side == DBDataControll::AnchorSide::Top) {
+    if (side == Telemetry::AnchorSide::Top) {
         std::reverse(result.begin(), result.end());
     }
     return result;
@@ -305,7 +305,7 @@ void DBDataControll::fetchSortedTail(int sortColumn, int sortOrder, int limit) {
 
 void DBDataControll::fetchRangeNearAnchor(int sortColumn, int sortOrder,
                                           quint64 anchorRecordId, int limit,
-                                          AnchorSide side) {
+                                          Telemetry::AnchorSide side) {
     if (!m_dbInitialized || anchorRecordId == 0) {
         emit rangeNearAnchorLoaded({}, side);
         return;

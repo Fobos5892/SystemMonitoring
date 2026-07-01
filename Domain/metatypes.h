@@ -4,13 +4,13 @@
 #include <QMetaType>
 #include <QVector>
 
-#include "Data/sensordata.h"
-#include "Data/sensorstatistics.h"
-#include "DBModel/dbdatacontroll.h"
+#include "Domain/sensordata.h"
+#include "Domain/sensorstatistics.h"
+#include "Domain/telemetrytypes.h"
 
 Q_DECLARE_METATYPE(SensorData)
 Q_DECLARE_METATYPE(SensorStatistics)
 Q_DECLARE_METATYPE(QVector<SensorData>)
-Q_DECLARE_METATYPE(DBDataControll::AnchorSide)
+Q_DECLARE_METATYPE(Telemetry::AnchorSide)
 
 #endif // METATYPES_H

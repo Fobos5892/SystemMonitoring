@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QTimer>
 #include <QVector>
-#include "Data/sensordata.h"
+#include "Domain/sensordata.h"
 
 class DeviceReceiver : public QObject {
     Q_OBJECT

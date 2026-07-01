@@ -1,37 +1,25 @@
-#ifndef SENSORMODEL_H
-#define SENSORMODEL_H
+#ifndef TELEMETRYVIEWMODEL_H
+#define TELEMETRYVIEWMODEL_H
 
-#include "Data/sensordata.h"
-#include "DBModel/dbdatacontroll.h"
-#include <QAbstractTableModel>
-#include <QDateTime>
+#include "Domain/sensordata.h"
+#include "Domain/telemetrytypes.h"
+#include <QObject>
+#include <Qt>
 #include <QVector>
 
-class DBDataControll;
+class TelemetryTableModel;
 
-class SensorModel : public QAbstractTableModel {
+class TelemetryViewModel : public QObject {
     Q_OBJECT
+
 public:
-    enum class Column : int {
-        RecordId = 0,
-        SensorId,
-        Value,
-        Timestamp
-    };
+    explicit TelemetryViewModel(QObject *parent = nullptr);
+    ~TelemetryViewModel() override = default;
 
-    static constexpr int DEFAULT_ROW_COLUMN_COUNT = 0;
+    TelemetryTableModel* tableModel() const { return table; }
 
-    explicit SensorModel(QObject *parent = nullptr);
-    ~SensorModel() = default;
-
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
-    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
-
-    void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;
-
-    void setDbController(DBDataControll* dbController);
+    int recordCount() const { return records.size(); }
+    const SensorData& recordAt(int row) const { return records.at(row); }
 
     void setFollowLiveTail(bool follow);
     void setLiveUpdatesEnabled(bool enabled);
@@ -40,6 +28,8 @@ public:
     bool isReloading() const { return reloading; }
     bool isLiveTailView() const;
 
+    void handleRowAccessed(int row);
+
 signals:
     void liveDataInserted();
     void loadingStarted();
@@ -47,14 +37,15 @@ signals:
     void sortRequested(int column, int sortOrder);
     void tailRequest(int sortColumn, int sortOrder, int limit);
     void rangeNearAnchorRequested(int sortColumn, int sortOrder, quint64 anchorRecordId,
-                                  int limit, DBDataControll::AnchorSide side);
+                                  int limit, Telemetry::AnchorSide side);
 
 public slots:
+    void requestSort(int column, Qt::SortOrder order);
     void beginReloading();
     void onBatchCommitted();
     void onDataLoaded(const QVector<SensorData> &chunk);
     void onTailDataLoaded(const QVector<SensorData> &chunk);
-    void onRangeNearAnchorLoaded(const QVector<SensorData> &chunk, DBDataControll::AnchorSide side);
+    void onRangeNearAnchorLoaded(const QVector<SensorData> &chunk, Telemetry::AnchorSide side);
     void onDatabaseCleared();
 
 private:
@@ -77,8 +68,9 @@ private:
     void trimWindowFromTop(int count);
     void trimWindowFromBottom(int count);
 
+    TelemetryTableModel *table = nullptr;
+
     QVector<SensorData> records;
-    DBDataControll* dbController = nullptr;
 
     bool reachedTop = false;
     bool reachedBottom = false;
@@ -88,12 +80,8 @@ private:
     bool filterMode = false;
     bool reloading = false;
 
-    int currentSortColumn = static_cast<int>(Column::Timestamp);
+    int currentSortColumn = static_cast<int>(Telemetry::Column::Timestamp);
     Qt::SortOrder currentSortOrder = Qt::AscendingOrder;
-
-    const int maxWindowSize = 500;
-    const int chunkSize = 40;
-    const int triggerThreshold = 10;
 };
 
-#endif // SENSORMODEL_H
+#endif // TELEMETRYVIEWMODEL_H

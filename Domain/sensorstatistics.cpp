@@ -1,4 +1,4 @@
-#include "Data/sensorstatistics.h"
+#include "Domain/sensorstatistics.h"
 
 #include <cmath>
 

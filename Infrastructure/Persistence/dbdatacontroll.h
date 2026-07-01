@@ -2,8 +2,9 @@
 #define DBDATACONTROLL_H
 
 #include "dbconnect.h"
-#include "Data/sensordata.h"
-#include "Data/sensorstatistics.h"
+#include "Domain/sensordata.h"
+#include "Domain/sensorstatistics.h"
+#include "Domain/telemetrytypes.h"
 #include <QScopedPointer>
 #include <QVector>
 
@@ -12,12 +13,6 @@ class DatabaseConnectionManager;
 class DBDataControll : public QObject {
     Q_OBJECT
 public:
-    enum class AnchorSide {
-        Top,
-        Bottom
-    };
-    Q_ENUM(AnchorSide)
-
     static constexpr int FILTER_QUERY_LIMIT = 500;
     static constexpr int SENSOR_ACTIVITY_WINDOW_MS = 10 * 60 * 1000;
 
@@ -37,7 +32,7 @@ public slots:
     void fetchSortedWindow(int sortColumn, int sortOrder, int limit);
     void fetchSortedTail(int sortColumn, int sortOrder, int limit);
     void fetchRangeNearAnchor(int sortColumn, int sortOrder, quint64 anchorRecordId,
-                              int limit, AnchorSide side);
+                              int limit, Telemetry::AnchorSide side);
 
     void applyFilterQuery(const QString &filterCondition);
     void clearDatabase();
@@ -46,7 +41,7 @@ public slots:
 signals:
     void dataLoaded(const QVector<SensorData> &chunk);
     void tailDataLoaded(const QVector<SensorData> &chunk);
-    void rangeNearAnchorLoaded(const QVector<SensorData> &chunk, AnchorSide side);
+    void rangeNearAnchorLoaded(const QVector<SensorData> &chunk, Telemetry::AnchorSide side);
     void sensorStatisticsLoaded(const SensorStatistics &stats);
     void batchCommitted();
     void databaseCleared();

@@ -7,30 +7,42 @@ CONFIG += c++20 console
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    Data/sensorstatistics.cpp \
-    DBModel/dbconnect.cpp \
-    DBModel/dbdatacontroll.cpp \
-    DeviceReceiver/devicereceiver.cpp \
-    DeviceSimulator/devicesimulator.cpp \
-    ThreadOrchestrator/threadorchestrator.cpp \
-    ViewModels/sensormodel.cpp \
-    main.cpp \
-    mainwindow.cpp
+    Application/Coordination/threadorchestrator.cpp \
+    Application/telemetryfacade.cpp \
+    Domain/sensorstatistics.cpp \
+    Infrastructure/Devices/devicereceiver.cpp \
+    Infrastructure/Devices/devicesimulator.cpp \
+    Infrastructure/Persistence/dbconnect.cpp \
+    Infrastructure/Persistence/dbdatacontroll.cpp \
+    Infrastructure/Persistence/dbtelemetryrepository.cpp \
+    View/main.cpp \
+    View/mainwindow.cpp \
+    ViewModels/filterviewmodel.cpp \
+    ViewModels/statisticsviewmodel.cpp \
+    ViewModels/telemetrytablemodel.cpp \
+    ViewModels/telemetryviewmodel.cpp
 
 HEADERS += \
-    Data/metatypes.h \
-    Data/sensordata.h \
-    Data/sensorstatistics.h \
-    DBModel/dbconnect.h \
-    DBModel/dbdatacontroll.h \
-    DeviceReceiver/devicereceiver.h \
-    DeviceSimulator/devicesimulator.h \
-    ThreadOrchestrator/threadorchestrator.h \
-    ViewModels/sensormodel.h \
-    mainwindow.h
+    Application/Contracts/itelemetryrepository.h \
+    Application/Coordination/threadorchestrator.h \
+    Application/telemetryfacade.h \
+    Domain/metatypes.h \
+    Domain/sensordata.h \
+    Domain/sensorstatistics.h \
+    Domain/telemetrytypes.h \
+    Infrastructure/Devices/devicereceiver.h \
+    Infrastructure/Devices/devicesimulator.h \
+    Infrastructure/Persistence/dbconnect.h \
+    Infrastructure/Persistence/dbdatacontroll.h \
+    Infrastructure/Persistence/dbtelemetryrepository.h \
+    View/mainwindow.h \
+    ViewModels/filterviewmodel.h \
+    ViewModels/statisticsviewmodel.h \
+    ViewModels/telemetrytablemodel.h \
+    ViewModels/telemetryviewmodel.h
 
 FORMS += \
-    mainwindow.ui
+    View/mainwindow.ui
 
 RESOURCES += \
     resources.qrc

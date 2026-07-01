@@ -6,17 +6,20 @@
 #include <QScopedPointer>
 #include <QString>
 #include <QTimer>
-#include "DBModel/dbdatacontroll.h"
+#include "Domain/sensorstatistics.h"
+#include "Domain/telemetrytypes.h"
 
 class DeviceSimulator;
 class DeviceReceiver;
 class DBDataControll;
-class SensorModel;
+class DbTelemetryRepository;
+class ITelemetryRepository;
+class TelemetryViewModel;
 
 class ThreadOrchestrator : public QObject {
     Q_OBJECT
 public:
-    explicit ThreadOrchestrator(SensorModel* uiModel, QObject *parent = nullptr);
+    explicit ThreadOrchestrator(TelemetryViewModel *viewModel, QObject *parent = nullptr);
     ~ThreadOrchestrator();
 
     void startAll();
@@ -35,27 +38,29 @@ public slots:
     void onSortRequested(int column, int sortOrder);
     void onTailRequest(int sortColumn, int sortOrder, int limit);
     void onRangeNearAnchorRequested(int sortColumn, int sortOrder, quint64 anchorRecordId,
-                                    int limit, DBDataControll::AnchorSide side);
+                                    int limit, Telemetry::AnchorSide side);
 
 private:
     void initThreads();
     void setupConnections();
     void setupSensorConnections();
-    void setupDatabaseOutputConnections();
-    void setupModelQueryConnections();
+    void setupRepositoryOutputConnections();
+    void setupViewModelQueryConnections();
 
-    SensorModel* m_uiModel;
+    TelemetryViewModel *viewModel = nullptr;
+    ITelemetryRepository *repository = nullptr;
 
-    QScopedPointer<DeviceSimulator> m_simulator;
-    QScopedPointer<DeviceReceiver>  m_receiver;
-    QScopedPointer<DBDataControll>  m_dbController;
+    QScopedPointer<DeviceSimulator> simulator;
+    QScopedPointer<DeviceReceiver> receiver;
+    QScopedPointer<DBDataControll> dataController;
+    QScopedPointer<DbTelemetryRepository> repositoryAdapter;
 
-    QThread m_simulatorThread;
-    QThread m_receiverThread;
-    QThread m_sqlThread;
+    QThread simulatorThread;
+    QThread receiverThread;
+    QThread sqlThread;
 
-    bool m_filterActive = false;
-    QString m_filterCondition;
-    QTimer m_filterRefreshTimer;
+    bool filterActive = false;
+    QString filterCondition;
+    QTimer filterRefreshTimer;
 };
 #endif // THREADORCHESTRATOR_H
