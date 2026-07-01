@@ -6,20 +6,29 @@
 #include <QtSql/QSqlDatabase>
 #include <QString>
 
+namespace DbConnection {
+inline constexpr const char SQL_WORKER_CONNECTION_NAME[] = "SQL_Worker_Connection";
+}
+
 class DatabaseConnectionManager : public QObject {
     Q_OBJECT
 public:
-    // connectionName позволяет создавать уникальные подключения для разных потоков
+    /**
+     * Создаёт объект для подключения к БД, но не подключается сразу.
+     * @dbPath - путь до базы данных
+     * @connectionName - имя соединения
+     * @parent - родительский объект
+     */
     explicit DatabaseConnectionManager(const QString &dbPath,
-                                        const QString &connectionName = "DefaultConnection",
+                                        const QString &connectionName,
                                         QObject *parent = nullptr);
     ~DatabaseConnectionManager();
 
-    // Основные методы управления жизненным циклом подключения
+    // управление подключением
     bool openConnection();
     void closeConnection();
 
-    // Методы проверки статуса
+    // Статусы
     bool isConnected() const;
     QString lastError() const;
     QString connectionName() const;

@@ -6,6 +6,7 @@
 #include <QScopedPointer>
 #include <QString>
 #include <QTimer>
+#include "DBModel/dbdatacontroll.h"
 
 class DeviceSimulator;
 class DeviceReceiver;
@@ -21,6 +22,9 @@ public:
     void startAll();
     void stopAll();
 
+signals:
+    void sensorStatisticsUpdated(const SensorStatistics &stats);
+
 public slots:
     void onConnectRequested();
     void onStopGenerationRequested();
@@ -29,13 +33,16 @@ public slots:
     void onBatchCommittedFromDb();
     void onDebouncedFilterRefresh();
     void onSortRequested(int column, int sortOrder);
-    void onTailWindowRequested(int sortColumn, int sortOrder, int limit);
-    void onRangeAfterAnchorRequested(int sortColumn, int sortOrder, quint64 anchorRecordId, int limit);
-    void onRangeBeforeAnchorRequested(int sortColumn, int sortOrder, quint64 anchorRecordId, int limit);
+    void onTailRequest(int sortColumn, int sortOrder, int limit);
+    void onRangeNearAnchorRequested(int sortColumn, int sortOrder, quint64 anchorRecordId,
+                                    int limit, DBDataControll::AnchorSide side);
 
 private:
     void initThreads();
     void setupConnections();
+    void setupSensorConnections();
+    void setupDatabaseOutputConnections();
+    void setupModelQueryConnections();
 
     SensorModel* m_uiModel;
 

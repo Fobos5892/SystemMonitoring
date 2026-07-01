@@ -4,52 +4,92 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QDebug>
+#include <QDateTime>
 #include <algorithm>
 
 namespace {
 
-class WriteBlockGuard {
-public:
-    explicit WriteBlockGuard(bool &flag) : m_flag(flag) { m_flag = true; }
-    ~WriteBlockGuard() { m_flag = false; }
+SensorData readSensorRow(const QSqlQuery &query) {
+    return {
+        query.value(0).toULongLong(),
+        query.value(1).toULongLong(),
+        query.value(3).toULongLong(),
+        query.value(2).toDouble()
+    };
+}
 
-    WriteBlockGuard(const WriteBlockGuard&) = delete;
-    WriteBlockGuard& operator=(const WriteBlockGuard&) = delete;
-
-private:
-    bool &m_flag;
-};
-
-QString afterAnchorPredicate(const QString &column, bool ascending) {
-    if (ascending) {
+/**
+ * WHERE-условие для выборки записей рядом с якорем.
+ * @column - колонка сортировки (без префикса t.)
+ * @ascending - порядок сортировки таблицы
+ * @side - Top: строки выше якоря, Bottom: строки ниже якоря
+ */
+QString getNewDataNearAnchor(const QString &column, bool ascending, DBDataControll::AnchorSide side) {
+    const bool useGreater = (side == DBDataControll::AnchorSide::Bottom) == ascending;
+    if (useGreater) {
         return QStringLiteral("(t.%1 > a.%1) OR (t.%1 = a.%1 AND t.id > a.id)").arg(column);
     }
     return QStringLiteral("(t.%1 < a.%1) OR (t.%1 = a.%1 AND t.id < a.id)").arg(column);
 }
 
-QString beforeAnchorPredicate(const QString &column, bool ascending) {
-    if (ascending) {
-        return QStringLiteral("(t.%1 < a.%1) OR (t.%1 = a.%1 AND t.id < a.id)").arg(column);
+/**
+ * ORDER BY для range-запросов относительно якорной строки.
+ * @column - имя колонки сортировки (без префикса t.)
+ * @ascending - порядок сортировки таблицы
+ * @side - Top: строки выше якоря, Bottom: строки ниже якоря
+ */
+QString orderByClause(const QString &column, bool ascending, DBDataControll::AnchorSide side) {
+    const bool orderAscending = side == DBDataControll::AnchorSide::Bottom ? ascending : !ascending;
+    const QString direction = orderAscending ? QStringLiteral("ASC") : QStringLiteral("DESC");
+    return QStringLiteral("t.%1 %2, t.id %2").arg(column, direction);
+}
+
+/**
+ * Загружает порцию записей рядом с якорной строкой.
+ * @anchorRecordId - id якорной записи в telemetry
+ * @limit - максимальное число строк в ответе
+ * @column - колонка сортировки (без префикса t.)
+ * @ascending - порядок сортировки таблицы
+ * @side - Top: строки выше якоря, Bottom: строки ниже якоря
+ */
+QVector<SensorData> loadRangeNearAnchor(quint64 anchorRecordId, int limit,
+                                        const QString &column, bool ascending,
+                                        DBDataControll::AnchorSide side) {
+    QVector<SensorData> result;
+    result.reserve(limit);
+
+    QSqlQuery query(QSqlDatabase::database(QLatin1String(DbConnection::SQL_WORKER_CONNECTION_NAME)));
+    query.setForwardOnly(true);
+    query.prepare(QStringLiteral(
+        "SELECT t.id, t.sensor_id, t.value, t.timestamp "
+        "FROM telemetry t, telemetry a "
+        "WHERE a.id = :anchorId AND (%1) "
+        "ORDER BY %2 LIMIT :limit")
+                      .arg(getNewDataNearAnchor(column, ascending, side),
+                           orderByClause(column, ascending, side)));
+    query.bindValue(":anchorId", anchorRecordId);
+    query.bindValue(":limit", limit);
+
+    if (query.exec()) {
+        while (query.next()) {
+            result.append(readSensorRow(query));
+        }
+    } else {
+        qCritical() << "Ошибка range-запроса в SQL:" << query.lastError().text();
     }
-    return QStringLiteral("(t.%1 > a.%1) OR (t.%1 = a.%1 AND t.id > a.id)").arg(column);
-}
 
-QString orderByClause(const QString &column, bool ascending) {
-    const QString direction = ascending ? QStringLiteral("ASC") : QStringLiteral("DESC");
-    return QStringLiteral("t.%1 %2, t.id %2").arg(column, direction);
-}
-
-QString reverseOrderByClause(const QString &column, bool ascending) {
-    const QString direction = ascending ? QStringLiteral("DESC") : QStringLiteral("ASC");
-    return QStringLiteral("t.%1 %2, t.id %2").arg(column, direction);
+    if (side == DBDataControll::AnchorSide::Top) {
+        std::reverse(result.begin(), result.end());
+    }
+    return result;
 }
 
 } // namespace
 
 DBDataControll::DBDataControll(const QString& url, QObject *parent)
     : QObject(parent)
-    , m_connectionName("SQL_Worker_Connection")
-    , m_dbManager(new DatabaseConnectionManager(url, m_connectionName))
+    , m_dbManager(new DatabaseConnectionManager(
+          url, QLatin1String(DbConnection::SQL_WORKER_CONNECTION_NAME)))
 {
 }
 
@@ -70,6 +110,7 @@ void DBDataControll::initializeDatabase() {
     }
 
     m_dbInitialized = true;
+    fetchSensorStatistics();
 }
 
 void DBDataControll::shutdownDatabase() {
@@ -77,22 +118,15 @@ void DBDataControll::shutdownDatabase() {
         return;
     }
 
-    m_pendingBatches.clear();
-    m_writesBlocked = false;
     m_dbManager->closeConnection();
     m_dbInitialized = false;
 }
 
 bool DBDataControll::ensureSchema() {
-    QSqlQuery query(QSqlDatabase::database(m_connectionName));
-
-    if (!query.exec(QStringLiteral("DROP TABLE IF EXISTS telemetry"))) {
-        qCritical() << "Не удалось удалить старую таблицу:" << query.lastError().text();
-        return false;
-    }
+    QSqlQuery query(QSqlDatabase::database(QLatin1String(DbConnection::SQL_WORKER_CONNECTION_NAME)));
 
     if (!query.exec(
-            "CREATE TABLE telemetry ("
+            "CREATE TABLE IF NOT EXISTS telemetry ("
             "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
             "  sensor_id INTEGER NOT NULL,"
             "  value REAL NOT NULL,"
@@ -103,9 +137,9 @@ bool DBDataControll::ensureSchema() {
     }
 
     const QStringList indexStatements = {
-        QStringLiteral("CREATE INDEX idx_telemetry_sensor_id ON telemetry(sensor_id)"),
-        QStringLiteral("CREATE INDEX idx_telemetry_value ON telemetry(value)"),
-        QStringLiteral("CREATE INDEX idx_telemetry_timestamp ON telemetry(timestamp)")
+        QStringLiteral("CREATE INDEX IF NOT EXISTS idx_telemetry_sensor_id ON telemetry(sensor_id)"),
+        QStringLiteral("CREATE INDEX IF NOT EXISTS idx_telemetry_value ON telemetry(value)"),
+        QStringLiteral("CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON telemetry(timestamp)")
     };
 
     for (const QString &statement : indexStatements) {
@@ -142,7 +176,7 @@ void DBDataControll::saveBatch(const QVector<SensorData> &batch) {
         return;
     }
 
-    QSqlDatabase db = QSqlDatabase::database(m_connectionName);
+    QSqlDatabase db = QSqlDatabase::database(QLatin1String(DbConnection::SQL_WORKER_CONNECTION_NAME));
     db.transaction();
 
     QSqlQuery query(db);
@@ -157,38 +191,60 @@ void DBDataControll::saveBatch(const QVector<SensorData> &batch) {
     db.commit();
 }
 
-void DBDataControll::flushPendingBatches() {
-    if (m_writesBlocked || m_pendingBatches.isEmpty()) {
-        return;
-    }
-
-    for (const auto &batch : std::as_const(m_pendingBatches)) {
-        saveBatch(batch);
-    }
-    m_pendingBatches.clear();
-}
-
 void DBDataControll::onSaveBatchToSql(const QVector<SensorData> &batch) {
     if (batch.isEmpty() || !m_dbInitialized) {
         return;
     }
 
-    if (m_writesBlocked) {
-        m_pendingBatches.append(batch);
-        return;
-    }
-
     saveBatch(batch);
     emit batchCommitted();
+    emit sensorStatisticsLoaded(loadSensorStatistics());
+}
+
+SensorStatistics DBDataControll::loadSensorStatistics() const {
+    SensorStatistics stats;
+
+    if (!m_dbInitialized) {
+        return stats;
+    }
+
+    const qint64 cutoffMs = QDateTime::currentMSecsSinceEpoch() - SENSOR_ACTIVITY_WINDOW_MS;
+
+    QSqlQuery query(QSqlDatabase::database(QLatin1String(DbConnection::SQL_WORKER_CONNECTION_NAME)));
+    query.prepare(QStringLiteral(
+        "SELECT "
+        "  COUNT(DISTINCT sensor_id), "
+        "  COALESCE(AVG(value), 0), "
+        "  COALESCE(MIN(value), 0), "
+        "  COALESCE(MAX(value), 0) "
+        "FROM telemetry "
+        "WHERE timestamp >= :cutoff"));
+    query.bindValue(":cutoff", cutoffMs);
+
+    if (!query.exec()) {
+        qCritical() << "Ошибка запроса статистики датчиков:" << query.lastError().text();
+        return stats;
+    }
+
+    if (query.next()) {
+        stats.setConnectedCount(query.value(0).toInt());
+        stats.setAverageValue(query.value(1).toDouble());
+        stats.setMinimumValue(query.value(2).toDouble());
+        stats.setMaximumValue(query.value(3).toDouble());
+    }
+
+    return stats;
+}
+
+void DBDataControll::fetchSensorStatistics() {
+    emit sensorStatisticsLoaded(loadSensorStatistics());
 }
 
 void DBDataControll::fetchSortedWindow(int sortColumn, int sortOrder, int limit) {
     if (!m_dbInitialized) {
-        emit windowDataLoaded({});
+        emit dataLoaded({});
         return;
     }
-
-    WriteBlockGuard guard(m_writesBlocked);
 
     QVector<SensorData> result;
     result.reserve(limit);
@@ -197,7 +253,7 @@ void DBDataControll::fetchSortedWindow(int sortColumn, int sortOrder, int limit)
     const bool ascending = sortOrder == static_cast<int>(Qt::AscendingOrder);
     const QString direction = ascending ? QStringLiteral("ASC") : QStringLiteral("DESC");
 
-    QSqlQuery query(QSqlDatabase::database(m_connectionName));
+    QSqlQuery query(QSqlDatabase::database(QLatin1String(DbConnection::SQL_WORKER_CONNECTION_NAME)));
     query.setForwardOnly(true);
 
     const QString queryString = QStringLiteral(
@@ -212,13 +268,12 @@ void DBDataControll::fetchSortedWindow(int sortColumn, int sortOrder, int limit)
         qCritical() << "Ошибка сортировки в SQL:" << query.lastError().text();
     }
 
-    flushPendingBatches();
-    emit windowDataLoaded(result);
+    emit dataLoaded(result);
 }
 
-void DBDataControll::fetchSortedTailWindow(int sortColumn, int sortOrder, int limit) {
+void DBDataControll::fetchSortedTail(int sortColumn, int sortOrder, int limit) {
     if (!m_dbInitialized) {
-        emit tailWindowLoaded({});
+        emit tailDataLoaded({});
         return;
     }
 
@@ -229,7 +284,7 @@ void DBDataControll::fetchSortedTailWindow(int sortColumn, int sortOrder, int li
     const bool ascending = sortOrder == static_cast<int>(Qt::AscendingOrder);
     const QString direction = ascending ? QStringLiteral("DESC") : QStringLiteral("ASC");
 
-    QSqlQuery query(QSqlDatabase::database(m_connectionName));
+    QSqlQuery query(QSqlDatabase::database(QLatin1String(DbConnection::SQL_WORKER_CONNECTION_NAME)));
     query.setForwardOnly(true);
 
     const QString queryString = QStringLiteral(
@@ -245,94 +300,33 @@ void DBDataControll::fetchSortedTailWindow(int sortColumn, int sortOrder, int li
     }
 
     std::reverse(result.begin(), result.end());
-    emit tailWindowLoaded(result);
+    emit tailDataLoaded(result);
 }
 
-void DBDataControll::fetchRangeAfterAnchor(int sortColumn, int sortOrder,
-                                           quint64 anchorRecordId, int limit) {
+void DBDataControll::fetchRangeNearAnchor(int sortColumn, int sortOrder,
+                                          quint64 anchorRecordId, int limit,
+                                          AnchorSide side) {
     if (!m_dbInitialized || anchorRecordId == 0) {
-        emit rangeAfterAnchorLoaded({});
+        emit rangeNearAnchorLoaded({}, side);
         return;
     }
 
-    QVector<SensorData> result;
-    result.reserve(limit);
-
     const QString column = sortColumnSql(sortColumn);
     const bool ascending = sortOrder == static_cast<int>(Qt::AscendingOrder);
-
-    QSqlQuery query(QSqlDatabase::database(m_connectionName));
-    query.setForwardOnly(true);
-    query.prepare(QStringLiteral(
-        "SELECT t.id, t.sensor_id, t.value, t.timestamp "
-        "FROM telemetry t, telemetry a "
-        "WHERE a.id = :anchorId AND (%1) "
-        "ORDER BY %2 LIMIT :limit")
-                      .arg(afterAnchorPredicate(column, ascending),
-                           orderByClause(column, ascending)));
-    query.bindValue(":anchorId", anchorRecordId);
-    query.bindValue(":limit", limit);
-
-    if (query.exec()) {
-        while (query.next()) {
-            result.append(readRow(query));
-        }
-    } else {
-        qCritical() << "Ошибка range-after в SQL:" << query.lastError().text();
-    }
-
-    emit rangeAfterAnchorLoaded(result);
-}
-
-void DBDataControll::fetchRangeBeforeAnchor(int sortColumn, int sortOrder,
-                                            quint64 anchorRecordId, int limit) {
-    if (!m_dbInitialized || anchorRecordId == 0) {
-        emit rangeBeforeAnchorLoaded({});
-        return;
-    }
-
-    QVector<SensorData> result;
-    result.reserve(limit);
-
-    const QString column = sortColumnSql(sortColumn);
-    const bool ascending = sortOrder == static_cast<int>(Qt::AscendingOrder);
-
-    QSqlQuery query(QSqlDatabase::database(m_connectionName));
-    query.setForwardOnly(true);
-    query.prepare(QStringLiteral(
-        "SELECT t.id, t.sensor_id, t.value, t.timestamp "
-        "FROM telemetry t, telemetry a "
-        "WHERE a.id = :anchorId AND (%1) "
-        "ORDER BY %2 LIMIT :limit")
-                      .arg(beforeAnchorPredicate(column, ascending),
-                           reverseOrderByClause(column, ascending)));
-    query.bindValue(":anchorId", anchorRecordId);
-    query.bindValue(":limit", limit);
-
-    if (query.exec()) {
-        while (query.next()) {
-            result.append(readRow(query));
-        }
-    } else {
-        qCritical() << "Ошибка range-before в SQL:" << query.lastError().text();
-    }
-
-    std::reverse(result.begin(), result.end());
-    emit rangeBeforeAnchorLoaded(result);
+    emit rangeNearAnchorLoaded(
+        loadRangeNearAnchor(anchorRecordId, limit, column, ascending, side), side);
 }
 
 void DBDataControll::applyFilterQuery(const QString &filterCondition) {
     if (!m_dbInitialized) {
-        emit windowDataLoaded({});
+        emit dataLoaded({});
         return;
     }
 
-    WriteBlockGuard guard(m_writesBlocked);
-
     QVector<SensorData> result;
-    result.reserve(500);
+    result.reserve(FILTER_QUERY_LIMIT);
 
-    QSqlQuery query(QSqlDatabase::database(m_connectionName));
+    QSqlQuery query(QSqlDatabase::database(QLatin1String(DbConnection::SQL_WORKER_CONNECTION_NAME)));
     query.setForwardOnly(true);
 
     QString queryString = QStringLiteral(
@@ -340,7 +334,8 @@ void DBDataControll::applyFilterQuery(const QString &filterCondition) {
     if (!filterCondition.isEmpty()) {
         queryString += QStringLiteral(" WHERE ") + filterCondition;
     }
-    queryString += QStringLiteral(" ORDER BY timestamp ASC, id ASC LIMIT 500");
+    queryString += QStringLiteral(" ORDER BY timestamp ASC, id ASC LIMIT %1")
+                       .arg(FILTER_QUERY_LIMIT);
 
     if (query.exec(queryString)) {
         while (query.next()) {
@@ -350,8 +345,7 @@ void DBDataControll::applyFilterQuery(const QString &filterCondition) {
         qCritical() << "Ошибка фильтрации в SQL:" << query.lastError().text();
     }
 
-    flushPendingBatches();
-    emit windowDataLoaded(result);
+    emit dataLoaded(result);
 }
 
 void DBDataControll::clearDatabase() {
@@ -359,8 +353,7 @@ void DBDataControll::clearDatabase() {
         return;
     }
 
-    m_writesBlocked = true;
-    QSqlQuery query(QSqlDatabase::database(m_connectionName));
+    QSqlQuery query(QSqlDatabase::database(QLatin1String(DbConnection::SQL_WORKER_CONNECTION_NAME)));
     if (!query.exec("DELETE FROM telemetry")) {
         qCritical() << "Не удалось очистить БД:" << query.lastError().text();
     }
@@ -368,7 +361,6 @@ void DBDataControll::clearDatabase() {
     if (!query.exec("DELETE FROM sqlite_sequence WHERE name='telemetry'")) {
         qCritical() << "Не удалось сбросить sequence telemetry:" << query.lastError().text();
     }
-    m_pendingBatches.clear();
-    m_writesBlocked = false;
+    emit sensorStatisticsLoaded({});
     emit databaseCleared();
 }

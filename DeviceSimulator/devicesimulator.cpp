@@ -29,8 +29,8 @@ void DeviceSimulator::generateDataTick()
         data.recordId = 0;
         data.sensorId = QRandomGenerator::global()->bounded(1, 10001);
         data.timestamp = currentTimestamp;
-        const double noise = QRandomGenerator::global()->generateDouble() * 2.0 - 1.0;
-        data.value = 50.0 + noise;
+        data.value = MIN_VOLTAGE
+            + QRandomGenerator::global()->generateDouble() * (MAX_VOLTAGE - MIN_VOLTAGE);
         batch.append(data);
     }
 

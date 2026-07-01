@@ -3,6 +3,7 @@
 
 #include "dbconnect.h"
 #include "Data/sensordata.h"
+#include "Data/sensorstatistics.h"
 #include <QScopedPointer>
 #include <QVector>
 
@@ -11,6 +12,15 @@ class DatabaseConnectionManager;
 class DBDataControll : public QObject {
     Q_OBJECT
 public:
+    enum class AnchorSide {
+        Top,
+        Bottom
+    };
+    Q_ENUM(AnchorSide)
+
+    static constexpr int FILTER_QUERY_LIMIT = 500;
+    static constexpr int SENSOR_ACTIVITY_WINDOW_MS = 10 * 60 * 1000;
+
     DBDataControll() = delete;
     DBDataControll(const DBDataControll& value) = delete;
     DBDataControll& operator=(const DBDataControll& value) = delete;
@@ -25,32 +35,30 @@ public slots:
     void onSaveBatchToSql(const QVector<SensorData> &batch);
 
     void fetchSortedWindow(int sortColumn, int sortOrder, int limit);
-    void fetchSortedTailWindow(int sortColumn, int sortOrder, int limit);
-    void fetchRangeAfterAnchor(int sortColumn, int sortOrder, quint64 anchorRecordId, int limit);
-    void fetchRangeBeforeAnchor(int sortColumn, int sortOrder, quint64 anchorRecordId, int limit);
+    void fetchSortedTail(int sortColumn, int sortOrder, int limit);
+    void fetchRangeNearAnchor(int sortColumn, int sortOrder, quint64 anchorRecordId,
+                              int limit, AnchorSide side);
 
     void applyFilterQuery(const QString &filterCondition);
     void clearDatabase();
+    void fetchSensorStatistics();
 
 signals:
-    void windowDataLoaded(const QVector<SensorData> &chunk);
-    void tailWindowLoaded(const QVector<SensorData> &chunk);
-    void rangeAfterAnchorLoaded(const QVector<SensorData> &chunk);
-    void rangeBeforeAnchorLoaded(const QVector<SensorData> &chunk);
+    void dataLoaded(const QVector<SensorData> &chunk);
+    void tailDataLoaded(const QVector<SensorData> &chunk);
+    void rangeNearAnchorLoaded(const QVector<SensorData> &chunk, AnchorSide side);
+    void sensorStatisticsLoaded(const SensorStatistics &stats);
     void batchCommitted();
     void databaseCleared();
 
 private:
     bool ensureSchema();
     void saveBatch(const QVector<SensorData> &batch);
-    void flushPendingBatches();
     static QString sortColumnSql(int sortColumn);
     static SensorData readRow(const QSqlQuery &query);
+    SensorStatistics loadSensorStatistics() const;
 
-    QString m_connectionName;
     bool m_dbInitialized = false;
-    bool m_writesBlocked = false;
-    QVector<QVector<SensorData>> m_pendingBatches;
     QScopedPointer<DatabaseConnectionManager> m_dbManager;
 };
 

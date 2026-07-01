@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include "Data/sensorstatistics.h"
 #include "ViewModels/sensormodel.h"
 
 QT_BEGIN_NAMESPACE
@@ -27,6 +28,7 @@ private slots:
     void onClearDatabaseClicked();
     void onApplyFilterClicked();
     void onFilterFieldChanged(int index);
+    void onSensorStatisticsUpdated(const SensorStatistics &stats);
 
 private:
     void normalizeNumericFilterInputs();

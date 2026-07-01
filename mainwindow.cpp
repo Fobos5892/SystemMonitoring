@@ -26,7 +26,11 @@ MainWindow::MainWindow(QWidget *parent)
     ui->SystemTableView->setColumnWidth(3, 260);  // Дата и Время
     ui->SystemTableView->horizontalHeader()->setStretchLastSection(true);
     ui->SystemTableView->verticalHeader()->setVisible(false);
-    ui->SystemTableView->sortByColumn(3, Qt::AscendingOrder);
+
+    m_orchestrator->startAll();
+
+    ui->SystemTableView->sortByColumn(static_cast<int>(SensorModel::Column::Timestamp),
+                                      Qt::AscendingOrder);
 
     auto updateFollowMode = [this]() {
         const QScrollBar *scrollBar = ui->SystemTableView->verticalScrollBar();
@@ -76,7 +80,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->filterDateFrom->setDateTime(now.date().startOfDay());
     ui->filterDateTo->setDateTime(now);
 
-    m_orchestrator->startAll();
+    connect(m_orchestrator, &ThreadOrchestrator::sensorStatisticsUpdated,
+            this, &MainWindow::onSensorStatisticsUpdated);
 
     connect(ui->connectButton, &QPushButton::clicked,
             this, &MainWindow::onConnectButtonClicked);
@@ -138,6 +143,18 @@ void MainWindow::onFilterFieldChanged(int index)
     ui->filterValueStack->setCurrentIndex(index);
 }
 
+void MainWindow::onSensorStatisticsUpdated(const SensorStatistics &stats)
+{
+    ui->statsConnectedLabel->setText(
+        tr("Активных датчиков: %1").arg(stats.connectedCount()));
+    ui->statsAverageLabel->setText(
+        tr("Среднее: %1 В").arg(stats.averageValue(), 0, 'f', 2));
+    ui->statsMinLabel->setText(
+        tr("Минимум: %1 В").arg(stats.minimumValue(), 0, 'f', 2));
+    ui->statsMaxLabel->setText(
+        tr("Максимум: %1 В").arg(stats.maximumValue(), 0, 'f', 2));
+}
+
 void MainWindow::normalizeNumericFilterInputs()
 {
     auto truncateTo = [](double value, int decimals) -> double {
@@ -145,7 +162,7 @@ void MainWindow::normalizeNumericFilterInputs()
         return std::floor(value * scale) / scale;
     };
 
-    const double normalizedValue = truncateTo(std::clamp(ui->filterDoubleSpinBox->value(), 0.0, 100.0), 2);
+    const double normalizedValue = truncateTo(std::clamp(ui->filterDoubleSpinBox->value(), 0.0, 280.0), 2);
     const double normalizedTolerance =
         truncateTo(std::clamp(ui->filterToleranceSpinBox->value(), 0.0, 1.0), 4);
 
@@ -172,7 +189,7 @@ QString MainWindow::buildFilterCondition() const
     case 1: {
         const double rawValue = ui->filterDoubleSpinBox->value();
         const double rawTolerance = ui->filterToleranceSpinBox->value();
-        const double value = truncateTo(std::clamp(rawValue, 0.0, 100.0), 2);
+        const double value = truncateTo(std::clamp(rawValue, 0.0, 280.0), 2);
         const double tolerance = truncateTo(std::clamp(rawTolerance, 0.0, 1.0), 4);
         const QString valueSql = QString::number(value, 'f', 2);
         const QString toleranceSql = QString::number(tolerance, 'f', 4);

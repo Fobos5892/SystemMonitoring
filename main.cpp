@@ -2,12 +2,14 @@
 
 #include <QApplication>
 #include <QIcon>
-#include <QVector>
-#include "Data/sensordata.h"
+#include "Data/metatypes.h"
 
 int main(int argc, char *argv[])
 {
-    qRegisterMetaType<QVector<SensorData>>("QVector<SensorData>");
+    qRegisterMetaType<SensorData>();
+    qRegisterMetaType<SensorStatistics>();
+    qRegisterMetaType<QVector<SensorData>>();
+    qRegisterMetaType<DBDataControll::AnchorSide>();
 
     QApplication a(argc, argv);
     a.setWindowIcon(QIcon(":/assets/app-icon.svg"));

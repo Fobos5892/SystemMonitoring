@@ -2,6 +2,7 @@
 #define SENSORMODEL_H
 
 #include "Data/sensordata.h"
+#include "DBModel/dbdatacontroll.h"
 #include <QAbstractTableModel>
 #include <QDateTime>
 #include <QVector>
@@ -11,6 +12,15 @@ class DBDataControll;
 class SensorModel : public QAbstractTableModel {
     Q_OBJECT
 public:
+    enum class Column : int {
+        RecordId = 0,
+        SensorId,
+        Value,
+        Timestamp
+    };
+
+    static constexpr int DEFAULT_ROW_COLUMN_COUNT = 0;
+
     explicit SensorModel(QObject *parent = nullptr);
     ~SensorModel() = default;
 
@@ -26,8 +36,8 @@ public:
     void setFollowLiveTail(bool follow);
     void setLiveUpdatesEnabled(bool enabled);
     void setFilterMode(bool enabled);
-    bool isFollowingLiveTail() const { return m_followLiveTail; }
-    bool isReloading() const { return m_isReloading; }
+    bool isFollowingLiveTail() const { return followLiveTail; }
+    bool isReloading() const { return reloading; }
     bool isLiveTailView() const;
 
 signals:
@@ -35,44 +45,55 @@ signals:
     void loadingStarted();
     void loadingFinished();
     void sortRequested(int column, int sortOrder);
-    void tailWindowRequested(int sortColumn, int sortOrder, int limit);
-    void rangeAfterAnchorRequested(int sortColumn, int sortOrder, quint64 anchorRecordId, int limit);
-    void rangeBeforeAnchorRequested(int sortColumn, int sortOrder, quint64 anchorRecordId, int limit);
+    void tailRequest(int sortColumn, int sortOrder, int limit);
+    void rangeNearAnchorRequested(int sortColumn, int sortOrder, quint64 anchorRecordId,
+                                  int limit, DBDataControll::AnchorSide side);
 
 public slots:
     void beginReloading();
     void onBatchCommitted();
-    void onReloadDataLoaded(const QVector<SensorData> &chunk);
-    void onTailWindowLoaded(const QVector<SensorData> &chunk);
-    void onRangeAfterAnchorLoaded(const QVector<SensorData> &chunk);
-    void onRangeBeforeAnchorLoaded(const QVector<SensorData> &chunk);
+    void onDataLoaded(const QVector<SensorData> &chunk);
+    void onTailDataLoaded(const QVector<SensorData> &chunk);
+    void onRangeNearAnchorLoaded(const QVector<SensorData> &chunk, DBDataControll::AnchorSide side);
     void onDatabaseCleared();
 
 private:
+    enum class SlideDirection {
+        Down,
+        Up
+    };
+
     void finishReloading(const QVector<SensorData> &chunk);
     void requestLiveRefresh();
-    void slideWindowDown(int count);
-    void slideWindowUp(int count);
+    void applyIncrementalDataUpdate(const QVector<SensorData> &chunk);
+    void clearRecordsOnEmptyUpdate();
+    void populateInitialChunk(const QVector<SensorData> &chunk);
+    bool hasSameVisibleRange(const QVector<SensorData> &chunk) const;
+    bool tryAppendNewRecords(const QVector<SensorData> &chunk);
+    bool tryPrependNewRecords(const QVector<SensorData> &chunk);
+    void resetRecordsFromChunk(const QVector<SensorData> &chunk);
+    void setBoundaryFlagsForChunkSize(int size);
+    void slideWindow(int count, SlideDirection direction);
     void trimWindowFromTop(int count);
     void trimWindowFromBottom(int count);
 
-    QVector<SensorData> m_records;
-    DBDataControll* m_dbController;
+    QVector<SensorData> records;
+    DBDataControll* dbController = nullptr;
 
-    bool m_reachedTop;
-    bool m_reachedBottom;
-    bool m_isBufferLoading;
-    bool m_followLiveTail;
-    bool m_liveUpdatesEnabled;
-    bool m_filterMode;
-    bool m_isReloading;
+    bool reachedTop = false;
+    bool reachedBottom = false;
+    bool bufferLoading = false;
+    bool followLiveTail = true;
+    bool liveUpdatesEnabled = true;
+    bool filterMode = false;
+    bool reloading = false;
 
-    int m_currentSortColumn;
-    Qt::SortOrder m_currentSortOrder;
+    int currentSortColumn = static_cast<int>(Column::Timestamp);
+    Qt::SortOrder currentSortOrder = Qt::AscendingOrder;
 
-    const int m_maxWindowSize;
-    const int m_chunkSize;
-    const int m_triggerThreshold;
+    const int maxWindowSize = 500;
+    const int chunkSize = 40;
+    const int triggerThreshold = 10;
 };
 
 #endif // SENSORMODEL_H

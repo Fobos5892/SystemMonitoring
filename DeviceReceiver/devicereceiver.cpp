@@ -10,7 +10,7 @@ DeviceReceiver::DeviceReceiver(QObject *parent)
 void DeviceReceiver::startProcessing()
 {
     if (!m_flushTimer.isActive()) {
-        m_flushTimer.start(40); // Сброс пачки на UI и в БД 25 раз в секунду
+        m_flushTimer.start(FLUSH_INTERVAL_MS);
     }
 }
 
@@ -25,7 +25,7 @@ void DeviceReceiver::onRawDataReceived(const QVector<SensorData> &rawBatch)
     m_localBuffer.append(rawBatch);
 
     // Предохранитель по объему памяти
-    if (m_localBuffer.size() >= 1000) {
+    if (m_localBuffer.size() >= BUFFER_FLUSH_THRESHOLD) {
         flushData();
     }
 }

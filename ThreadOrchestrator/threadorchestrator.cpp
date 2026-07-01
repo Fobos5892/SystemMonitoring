@@ -1,7 +1,6 @@
 #include "threadorchestrator.h"
 #include "DeviceSimulator/devicesimulator.h"
 #include "DeviceReceiver/devicereceiver.h"
-#include "DBModel/dbdatacontroll.h"
 #include "ViewModels/sensormodel.h"
 
 ThreadOrchestrator::ThreadOrchestrator(SensorModel* uiModel, QObject *parent)
@@ -30,6 +29,12 @@ void ThreadOrchestrator::initThreads() {
 }
 
 void ThreadOrchestrator::setupConnections() {
+    setupSensorConnections();
+    setupDatabaseOutputConnections();
+    setupModelQueryConnections();
+}
+
+void ThreadOrchestrator::setupSensorConnections() {
     connect(m_simulator.data(), &DeviceSimulator::rawDataGenerated,
             m_receiver.data(), &DeviceReceiver::onRawDataReceived,
             Qt::QueuedConnection);
@@ -37,7 +42,9 @@ void ThreadOrchestrator::setupConnections() {
     connect(m_receiver.data(), &DeviceReceiver::dataBatchReady,
             m_dbController.data(), &DBDataControll::onSaveBatchToSql,
             Qt::QueuedConnection);
+}
 
+void ThreadOrchestrator::setupDatabaseOutputConnections() {
     connect(m_dbController.data(), &DBDataControll::batchCommitted,
             m_uiModel, &SensorModel::onBatchCommitted,
             Qt::QueuedConnection);
@@ -45,37 +52,36 @@ void ThreadOrchestrator::setupConnections() {
             this, &ThreadOrchestrator::onBatchCommittedFromDb,
             Qt::QueuedConnection);
 
-    connect(m_dbController.data(), &DBDataControll::windowDataLoaded,
-            m_uiModel, &SensorModel::onReloadDataLoaded,
+    connect(m_dbController.data(), &DBDataControll::dataLoaded,
+            m_uiModel, &SensorModel::onDataLoaded,
             Qt::QueuedConnection);
 
-    connect(m_dbController.data(), &DBDataControll::tailWindowLoaded,
-            m_uiModel, &SensorModel::onTailWindowLoaded,
+    connect(m_dbController.data(), &DBDataControll::tailDataLoaded,
+            m_uiModel, &SensorModel::onTailDataLoaded,
             Qt::QueuedConnection);
 
-    connect(m_dbController.data(), &DBDataControll::rangeAfterAnchorLoaded,
-            m_uiModel, &SensorModel::onRangeAfterAnchorLoaded,
-            Qt::QueuedConnection);
-
-    connect(m_dbController.data(), &DBDataControll::rangeBeforeAnchorLoaded,
-            m_uiModel, &SensorModel::onRangeBeforeAnchorLoaded,
+    connect(m_dbController.data(), &DBDataControll::rangeNearAnchorLoaded,
+            m_uiModel, &SensorModel::onRangeNearAnchorLoaded,
             Qt::QueuedConnection);
 
     connect(m_dbController.data(), &DBDataControll::databaseCleared,
             m_uiModel, &SensorModel::onDatabaseCleared,
             Qt::QueuedConnection);
 
+    connect(m_dbController.data(), &DBDataControll::sensorStatisticsLoaded,
+            this, &ThreadOrchestrator::sensorStatisticsUpdated,
+            Qt::QueuedConnection);
+}
+
+void ThreadOrchestrator::setupModelQueryConnections() {
     connect(m_uiModel, &SensorModel::sortRequested,
             this, &ThreadOrchestrator::onSortRequested);
 
-    connect(m_uiModel, &SensorModel::tailWindowRequested,
-            this, &ThreadOrchestrator::onTailWindowRequested);
+    connect(m_uiModel, &SensorModel::tailRequest,
+            this, &ThreadOrchestrator::onTailRequest);
 
-    connect(m_uiModel, &SensorModel::rangeAfterAnchorRequested,
-            this, &ThreadOrchestrator::onRangeAfterAnchorRequested);
-
-    connect(m_uiModel, &SensorModel::rangeBeforeAnchorRequested,
-            this, &ThreadOrchestrator::onRangeBeforeAnchorRequested);
+    connect(m_uiModel, &SensorModel::rangeNearAnchorRequested,
+            this, &ThreadOrchestrator::onRangeNearAnchorRequested);
 }
 
 void ThreadOrchestrator::startAll() {
@@ -169,30 +175,22 @@ void ThreadOrchestrator::onSortRequested(int column, int sortOrder) {
                               Q_ARG(int, 500));
 }
 
-void ThreadOrchestrator::onTailWindowRequested(int sortColumn, int sortOrder, int limit) {
-    QMetaObject::invokeMethod(m_dbController.data(), "fetchSortedTailWindow",
+void ThreadOrchestrator::onTailRequest(int sortColumn, int sortOrder, int limit) {
+    QMetaObject::invokeMethod(m_dbController.data(), "fetchSortedTail",
                               Qt::QueuedConnection,
                               Q_ARG(int, sortColumn),
                               Q_ARG(int, sortOrder),
                               Q_ARG(int, limit));
 }
 
-void ThreadOrchestrator::onRangeAfterAnchorRequested(int sortColumn, int sortOrder,
-                                                   quint64 anchorRecordId, int limit) {
-    QMetaObject::invokeMethod(m_dbController.data(), "fetchRangeAfterAnchor",
+void ThreadOrchestrator::onRangeNearAnchorRequested(int sortColumn, int sortOrder,
+                                                    quint64 anchorRecordId, int limit,
+                                                    DBDataControll::AnchorSide side) {
+    QMetaObject::invokeMethod(m_dbController.data(), "fetchRangeNearAnchor",
                               Qt::QueuedConnection,
                               Q_ARG(int, sortColumn),
                               Q_ARG(int, sortOrder),
                               Q_ARG(quint64, anchorRecordId),
-                              Q_ARG(int, limit));
-}
-
-void ThreadOrchestrator::onRangeBeforeAnchorRequested(int sortColumn, int sortOrder,
-                                                    quint64 anchorRecordId, int limit) {
-    QMetaObject::invokeMethod(m_dbController.data(), "fetchRangeBeforeAnchor",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, sortColumn),
-                              Q_ARG(int, sortOrder),
-                              Q_ARG(quint64, anchorRecordId),
-                              Q_ARG(int, limit));
+                              Q_ARG(int, limit),
+                              Q_ARG(DBDataControll::AnchorSide, side));
 }

@@ -9,6 +9,9 @@
 class DeviceReceiver : public QObject {
     Q_OBJECT
 public:
+    static constexpr int FLUSH_INTERVAL_MS = 40;
+    static constexpr int BUFFER_FLUSH_THRESHOLD = 1000;
+
     explicit DeviceReceiver(QObject *parent = nullptr);
 
 signals:
@@ -16,7 +19,7 @@ signals:
     void dataBatchReady(const QVector<SensorData> &batch);
 
 public slots:
-    // Слот принимает сырые пачки от нашего нового класса-генератора
+    // Слот принимает набор сырых данных
     void onRawDataReceived(const QVector<SensorData> &rawBatch);
     void startProcessing();
     void stopProcessing();
