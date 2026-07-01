@@ -7,70 +7,192 @@
 ThreadOrchestrator::ThreadOrchestrator(SensorModel* uiModel, QObject *parent)
     : QObject(parent)
     , m_uiModel(uiModel)
-    // Выделяем память через обычный new, QScopedPointer забирает владение объектами
     , m_simulator(new DeviceSimulator())
     , m_receiver(new DeviceReceiver())
     , m_dbController(new DBDataControll("telemetry.db"))
 {
+    m_filterRefreshTimer.setSingleShot(true);
+    m_filterRefreshTimer.setInterval(300);
+    connect(&m_filterRefreshTimer, &QTimer::timeout,
+            this, &ThreadOrchestrator::onDebouncedFilterRefresh);
     initThreads();
     setupConnections();
 }
 
 ThreadOrchestrator::~ThreadOrchestrator() {
-    stopAll(); // Гарантируем безопасное завершение потоков при деструкции
+    stopAll();
 }
 
 void ThreadOrchestrator::initThreads() {
-    // Переносим объекты в их персональные фоновые потоки.
-    // Используем .data() для получения сырого указателя из QScopedPointer
     m_simulator->moveToThread(&m_simulatorThread);
     m_receiver->moveToThread(&m_receiverThread);
     m_dbController->moveToThread(&m_sqlThread);
 }
 
 void ThreadOrchestrator::setupConnections() {
-    // Шаг 1: Фоновый конвейер данных (Генератор -> Ресивер -> БД и UI)
-    // connect(m_simulator.data(), &DeviceSimulator::rawDataGenerated,
-    //         m_receiver.data(), &DeviceReceiver::onRawDataReceived);
+    connect(m_simulator.data(), &DeviceSimulator::rawDataGenerated,
+            m_receiver.data(), &DeviceReceiver::onRawDataReceived,
+            Qt::QueuedConnection);
 
-    // connect(m_receiver.data(), &DeviceReceiver::dataBatchReady,
-    //         m_dbController.data(), &DBDataControll::onSaveBatchToSql);
+    connect(m_receiver.data(), &DeviceReceiver::dataBatchReady,
+            m_dbController.data(), &DBDataControll::onSaveBatchToSql,
+            Qt::QueuedConnection);
 
-    // connect(m_receiver.data(), &DeviceReceiver::dataBatchReady,
-    //         m_uiModel, &SensorModel::onLiveRecordsReceived);
+    connect(m_dbController.data(), &DBDataControll::batchCommitted,
+            m_uiModel, &SensorModel::onBatchCommitted,
+            Qt::QueuedConnection);
+    connect(m_dbController.data(), &DBDataControll::batchCommitted,
+            this, &ThreadOrchestrator::onBatchCommittedFromDb,
+            Qt::QueuedConnection);
 
-    // // Шаг 2: Обратная связь БД -> UI модель при скроллинге истории (вызовы fetch)
-    // connect(m_dbController.data(), &DBDataControll::bottomChunkLoaded,
-    //         m_uiModel, &SensorModel::onBottomChunkLoaded);
+    connect(m_dbController.data(), &DBDataControll::windowDataLoaded,
+            m_uiModel, &SensorModel::onReloadDataLoaded,
+            Qt::QueuedConnection);
 
-    // connect(m_dbController.data(), &DBDataControll::topChunkLoaded,
-    //         m_uiModel, &SensorModel::onTopChunkLoaded);
+    connect(m_dbController.data(), &DBDataControll::tailWindowLoaded,
+            m_uiModel, &SensorModel::onTailWindowLoaded,
+            Qt::QueuedConnection);
+
+    connect(m_dbController.data(), &DBDataControll::rangeAfterAnchorLoaded,
+            m_uiModel, &SensorModel::onRangeAfterAnchorLoaded,
+            Qt::QueuedConnection);
+
+    connect(m_dbController.data(), &DBDataControll::rangeBeforeAnchorLoaded,
+            m_uiModel, &SensorModel::onRangeBeforeAnchorLoaded,
+            Qt::QueuedConnection);
+
+    connect(m_dbController.data(), &DBDataControll::databaseCleared,
+            m_uiModel, &SensorModel::onDatabaseCleared,
+            Qt::QueuedConnection);
+
+    connect(m_uiModel, &SensorModel::sortRequested,
+            this, &ThreadOrchestrator::onSortRequested);
+
+    connect(m_uiModel, &SensorModel::tailWindowRequested,
+            this, &ThreadOrchestrator::onTailWindowRequested);
+
+    connect(m_uiModel, &SensorModel::rangeAfterAnchorRequested,
+            this, &ThreadOrchestrator::onRangeAfterAnchorRequested);
+
+    connect(m_uiModel, &SensorModel::rangeBeforeAnchorRequested,
+            this, &ThreadOrchestrator::onRangeBeforeAnchorRequested);
 }
 
 void ThreadOrchestrator::startAll() {
-    // Запускаем Event Loop во всех трех фоновых потоках
     m_simulatorThread.start();
     m_receiverThread.start();
     m_sqlThread.start();
+
+    QMetaObject::invokeMethod(m_dbController.data(), "initializeDatabase", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(m_receiver.data(), "startProcessing", Qt::QueuedConnection);
 }
 
 void ThreadOrchestrator::stopAll() {
-    // 1. Сначала просим генератор перестать спамить тики данных
-    m_simulator->stopGeneration();
-
-    // 2. Сигнализируем всем потокам команду на корректный выход из очередей событий
-    if (m_simulatorThread.isRunning()) { m_simulatorThread.quit(); m_simulatorThread.wait(); }
-    if (m_receiverThread.isRunning())  { m_receiverThread.quit();  m_receiverThread.wait(); }
-    if (m_sqlThread.isRunning())       { m_sqlThread.quit();       m_sqlThread.wait(); }
+    if (m_simulatorThread.isRunning()) {
+        QMetaObject::invokeMethod(m_simulator.data(), "stopGeneration", Qt::BlockingQueuedConnection);
+        m_simulatorThread.quit();
+        m_simulatorThread.wait();
+    }
+    if (m_receiverThread.isRunning()) {
+        QMetaObject::invokeMethod(m_receiver.data(), "stopProcessing", Qt::BlockingQueuedConnection);
+        m_receiverThread.quit();
+        m_receiverThread.wait();
+    }
+    if (m_sqlThread.isRunning()) {
+        QMetaObject::invokeMethod(m_dbController.data(), "shutdownDatabase", Qt::BlockingQueuedConnection);
+        m_sqlThread.quit();
+        m_sqlThread.wait();
+    }
 }
 
 void ThreadOrchestrator::onConnectRequested() {
-    // Безопасно запускаем метод генератора в его родном потоке
     QMetaObject::invokeMethod(m_simulator.data(), "startGeneration", Qt::QueuedConnection);
 }
 
+void ThreadOrchestrator::onStopGenerationRequested() {
+    QMetaObject::invokeMethod(m_simulator.data(), "stopGeneration", Qt::QueuedConnection);
+}
+
+void ThreadOrchestrator::onClearDatabaseRequested() {
+    QMetaObject::invokeMethod(m_dbController.data(), "clearDatabase", Qt::QueuedConnection);
+}
+
 void ThreadOrchestrator::onFilterRequested(const QString &filterCondition) {
-    // Перенаправляем тяжелый SQL-запрос фильтрации в поток базы данных
-    // QMetaObject::invokeMethod(m_dbController.data(), "applyFilterQuery",
-    //                           Qt::QueuedConnection, Q_ARG(QString, filterCondition));
+    m_filterActive = true;
+    m_filterCondition = filterCondition;
+    m_filterRefreshTimer.stop();
+    m_uiModel->beginReloading();
+    QMetaObject::invokeMethod(m_dbController.data(), "applyFilterQuery",
+                              Qt::QueuedConnection, Q_ARG(QString, filterCondition));
+}
+
+void ThreadOrchestrator::onBatchCommittedFromDb() {
+    if (!m_filterActive || m_filterCondition.isEmpty()) {
+        return;
+    }
+    if (m_uiModel->isReloading()) {
+        return;
+    }
+
+    // Пакетируем частые коммиты в редкие обновления UI, чтобы убрать мерцание.
+    m_filterRefreshTimer.start();
+}
+
+void ThreadOrchestrator::onDebouncedFilterRefresh() {
+    if (!m_filterActive || m_filterCondition.isEmpty() || m_uiModel->isReloading()) {
+        return;
+    }
+
+    QMetaObject::invokeMethod(m_dbController.data(), "applyFilterQuery",
+                              Qt::QueuedConnection, Q_ARG(QString, m_filterCondition));
+}
+
+void ThreadOrchestrator::onSortRequested(int column, int sortOrder) {
+    if (m_filterActive) {
+        // В режиме фильтра не сбрасываем условие сортировкой из view.
+        m_filterRefreshTimer.stop();
+        if (!m_uiModel->isReloading()) {
+            m_uiModel->beginReloading();
+        }
+        QMetaObject::invokeMethod(m_dbController.data(), "applyFilterQuery",
+                                  Qt::QueuedConnection, Q_ARG(QString, m_filterCondition));
+        return;
+    }
+
+    m_filterActive = false;
+    m_filterCondition.clear();
+    m_filterRefreshTimer.stop();
+    QMetaObject::invokeMethod(m_dbController.data(), "fetchSortedWindow",
+                              Qt::QueuedConnection,
+                              Q_ARG(int, column),
+                              Q_ARG(int, sortOrder),
+                              Q_ARG(int, 500));
+}
+
+void ThreadOrchestrator::onTailWindowRequested(int sortColumn, int sortOrder, int limit) {
+    QMetaObject::invokeMethod(m_dbController.data(), "fetchSortedTailWindow",
+                              Qt::QueuedConnection,
+                              Q_ARG(int, sortColumn),
+                              Q_ARG(int, sortOrder),
+                              Q_ARG(int, limit));
+}
+
+void ThreadOrchestrator::onRangeAfterAnchorRequested(int sortColumn, int sortOrder,
+                                                   quint64 anchorRecordId, int limit) {
+    QMetaObject::invokeMethod(m_dbController.data(), "fetchRangeAfterAnchor",
+                              Qt::QueuedConnection,
+                              Q_ARG(int, sortColumn),
+                              Q_ARG(int, sortOrder),
+                              Q_ARG(quint64, anchorRecordId),
+                              Q_ARG(int, limit));
+}
+
+void ThreadOrchestrator::onRangeBeforeAnchorRequested(int sortColumn, int sortOrder,
+                                                    quint64 anchorRecordId, int limit) {
+    QMetaObject::invokeMethod(m_dbController.data(), "fetchRangeBeforeAnchor",
+                              Qt::QueuedConnection,
+                              Q_ARG(int, sortColumn),
+                              Q_ARG(int, sortOrder),
+                              Q_ARG(quint64, anchorRecordId),
+                              Q_ARG(int, limit));
 }

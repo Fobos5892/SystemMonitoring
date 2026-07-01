@@ -18,6 +18,8 @@ signals:
 public slots:
     // Слот принимает сырые пачки от нашего нового класса-генератора
     void onRawDataReceived(const QVector<SensorData> &rawBatch);
+    void startProcessing();
+    void stopProcessing();
 
 private:
     void flushData();

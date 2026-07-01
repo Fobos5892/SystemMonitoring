@@ -1,9 +1,23 @@
 #include "devicereceiver.h"
 
-DeviceReceiver::DeviceReceiver(QObject *parent) : QObject(parent)
+DeviceReceiver::DeviceReceiver(QObject *parent)
+    : QObject(parent)
+    , m_flushTimer(this)
 {
     connect(&m_flushTimer, &QTimer::timeout, this, &DeviceReceiver::flushData);
-    m_flushTimer.start(40); // Сброс пачки на UI и в БД 25 раз в секунду
+}
+
+void DeviceReceiver::startProcessing()
+{
+    if (!m_flushTimer.isActive()) {
+        m_flushTimer.start(40); // Сброс пачки на UI и в БД 25 раз в секунду
+    }
+}
+
+void DeviceReceiver::stopProcessing()
+{
+    m_flushTimer.stop();
+    flushData();
 }
 
 void DeviceReceiver::onRawDataReceived(const QVector<SensorData> &rawBatch)

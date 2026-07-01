@@ -1,4 +1,4 @@
-QT += core gui widgets sql
+QT += core gui widgets sql svg
 
 CONFIG += c++20 console
 
@@ -28,6 +28,9 @@ HEADERS += \
 
 FORMS += \
     mainwindow.ui
+
+RESOURCES += \
+    resources.qrc
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

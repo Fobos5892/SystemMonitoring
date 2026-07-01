@@ -68,13 +68,18 @@
     }
 
     /* Поля ввода – тёмные, но читаемые */
+    QLabel {
+        color: #0f172a;
+        font-weight: 600;
+    }
+
     QComboBox, QSpinBox, QDoubleSpinBox, QDateTimeEdit {
         border: 1px solid #475569;
         border-radius: 6px;
-        padding: 4px 8px;
+        padding: 5px 10px;
         background-color: #0f172a;
         color: #f1f5f9;
-        min-height: 26px;
+        min-height: 30px;
     }
     QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus, QDateTimeEdit:focus {
         border-color: #3b82f6;
@@ -94,10 +99,10 @@
     QPushButton {
         border: none;
         border-radius: 6px;
-        padding: 5px 16px;
+        padding: 6px 16px;
         font-weight: 600;
         font-size: 13px;
-        min-height: 26px;
+        min-height: 30px;
         color: white;
         background-color: #3b82f6;
     }
@@ -115,17 +120,23 @@
     QPushButton#applyFilterButton:hover {
         background-color: #7c3aed;
     }
-    QPushButton#applyFieldButton {
-        background-color: #64748b;
-    }
-    QPushButton#applyFieldButton:hover {
-        background-color: #475569;
-    }
     QPushButton#connectButton {
         background-color: #10b981;
     }
     QPushButton#connectButton:hover {
         background-color: #059669;
+    }
+    QPushButton#connectButton[running="true"] {
+        background-color: #ef4444;
+    }
+    QPushButton#connectButton[running="true"]:hover {
+        background-color: #dc2626;
+    }
+    QPushButton#clearDatabaseButton {
+        background-color: #f59e0b;
+    }
+    QPushButton#clearDatabaseButton:hover {
+        background-color: #d97706;
     }
 
     /* Оверлей загрузки */
@@ -246,92 +257,139 @@
        <property name="spacing"><number>8</number></property>
        <item>
         <widget class="QComboBox" name="filterFieldComboBox">
-         <property name="minimumSize"><size><width>140</width><height>30</height></size></property>
-         <property name="maximumSize"><size><width>140</width><height>30</height></size></property>
-         <property name="toolTip"><string>Поле для фильтра</string></property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QComboBox" name="conditionComboBox">
-         <property name="minimumSize"><size><width>140</width><height>30</height></size></property>
-         <property name="maximumSize"><size><width>140</width><height>30</height></size></property>
-         <property name="toolTip"><string>Условие</string></property>
+         <property name="minimumSize"><size><width>160</width><height>36</height></size></property>
+         <property name="toolTip"><string>Тип фильтра</string></property>
+         <item><property name="text"><string>ID</string></property></item>
+         <item><property name="text"><string>Значение</string></property></item>
+         <item><property name="text"><string>Дата</string></property></item>
         </widget>
        </item>
        <item>
         <widget class="QStackedWidget" name="filterValueStack">
-         <property name="minimumSize"><size><width>180</width><height>30</height></size></property>
-         <property name="maximumSize"><size><width>180</width><height>30</height></size></property>
-         <widget class="QWidget" name="pageSpinBox">
-          <layout class="QHBoxLayout"><property name="margin"><number>0</number></property><item><widget class="QSpinBox" name="filterSpinBox"><property name="maximum"><number>999999</number></property></widget></item></layout>
+         <property name="minimumSize"><size><width>520</width><height>36</height></size></property>
+         <widget class="QWidget" name="pageIdFilter">
+          <layout class="QHBoxLayout" name="pageIdLayout">
+           <property name="leftMargin"><number>0</number></property>
+           <property name="topMargin"><number>0</number></property>
+           <property name="rightMargin"><number>0</number></property>
+           <property name="bottomMargin"><number>0</number></property>
+           <item>
+            <widget class="QLabel" name="filterIdLabel">
+             <property name="text"><string>ID:</string></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="filterSpinBox">
+             <property name="minimum"><number>0</number></property>
+             <property name="maximum"><number>999999</number></property>
+            </widget>
+           </item>
+          </layout>
          </widget>
-         <widget class="QWidget" name="pageDoubleSpinBox">
-          <layout class="QHBoxLayout"><property name="margin"><number>0</number></property><item><widget class="QDoubleSpinBox" name="filterDoubleSpinBox"><property name="decimals"><number>4</number></property><property name="maximum"><number>999999</number></property></widget></item></layout>
+         <widget class="QWidget" name="pageValueFilter">
+          <layout class="QHBoxLayout" name="pageValueLayout">
+           <property name="leftMargin"><number>0</number></property>
+           <property name="topMargin"><number>0</number></property>
+           <property name="rightMargin"><number>0</number></property>
+           <property name="bottomMargin"><number>0</number></property>
+           <item>
+            <widget class="QLabel" name="filterValueLabel">
+             <property name="text"><string>Значение:</string></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="filterValueOperationComboBox">
+             <property name="minimumSize"><size><width>110</width><height>0</height></size></property>
+             <item><property name="text"><string>равно</string></property></item>
+             <item><property name="text"><string>более</string></property></item>
+             <item><property name="text"><string>менее</string></property></item>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDoubleSpinBox" name="filterDoubleSpinBox">
+             <property name="minimumSize"><size><width>120</width><height>0</height></size></property>
+             <property name="decimals"><number>2</number></property>
+             <property name="minimum"><double>0.000000000000000</double></property>
+             <property name="maximum"><double>100.000000000000000</double></property>
+             <property name="singleStep"><double>0.010000000000000</double></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="filterToleranceLabel">
+             <property name="text"><string>Погрешность:</string></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDoubleSpinBox" name="filterToleranceSpinBox">
+             <property name="minimumSize"><size><width>110</width><height>0</height></size></property>
+             <property name="decimals"><number>4</number></property>
+             <property name="minimum"><double>0.000000000000000</double></property>
+             <property name="maximum"><double>1.000000000000000</double></property>
+             <property name="singleStep"><double>0.010000000000000</double></property>
+            </widget>
+           </item>
+          </layout>
          </widget>
-         <widget class="QWidget" name="pageDateTime">
-          <layout class="QHBoxLayout"><property name="margin"><number>0</number></property><item><widget class="QDateTimeEdit" name="filterDateTimeEdit"><property name="calendarPopup"><bool>true</bool></property></widget></item></layout>
+         <widget class="QWidget" name="pageDateRange">
+          <layout class="QHBoxLayout" name="pageDateRangeLayout">
+           <property name="leftMargin"><number>0</number></property>
+           <property name="topMargin"><number>0</number></property>
+           <property name="rightMargin"><number>0</number></property>
+           <property name="bottomMargin"><number>0</number></property>
+           <property name="spacing"><number>6</number></property>
+           <item>
+            <widget class="QLabel" name="filterDateFromLabel">
+             <property name="text"><string>с</string></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDateTimeEdit" name="filterDateFrom">
+             <property name="calendarPopup"><bool>true</bool></property>
+             <property name="displayFormat"><string>dd.MM.yyyy HH:mm</string></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="filterDateToLabel">
+             <property name="text"><string>по</string></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDateTimeEdit" name="filterDateTo">
+             <property name="calendarPopup"><bool>true</bool></property>
+             <property name="displayFormat"><string>dd.MM.yyyy HH:mm</string></property>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </widget>
        </item>
        <item>
         <widget class="QPushButton" name="applyFilterButton">
-         <property name="minimumSize"><size><width>150</width><height>30</height></size></property>
-         <property name="maximumSize"><size><width>150</width><height>30</height></size></property>
+         <property name="minimumSize"><size><width>170</width><height>36</height></size></property>
          <property name="text"><string>Применить фильтр</string></property>
         </widget>
        </item>
        <item>
         <spacer name="fSpacer">
          <property name="orientation"><enum>Qt::Horizontal</enum></property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
         </spacer>
        </item>
-      </layout>
-     </widget>
-    </item>
-
-    <!-- 3. Группа управления -->
-    <item>
-     <widget class="QGroupBox" name="groupBoxControl">
-      <property name="title">
-       <string>Управление</string>
-      </property>
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <layout class="QHBoxLayout" name="ctrlLayout">
-       <property name="leftMargin"><number>10</number></property>
-       <property name="topMargin"><number>8</number></property>
-       <property name="rightMargin"><number>10</number></property>
-       <property name="bottomMargin"><number>8</number></property>
-       <property name="spacing"><number>8</number></property>
        <item>
-        <widget class="QComboBox" name="fieldComboBox">
-         <property name="minimumSize"><size><width>150</width><height>30</height></size></property>
-         <property name="maximumSize"><size><width>150</width><height>30</height></size></property>
-         <property name="toolTip"><string>Выберите поле</string></property>
-         <item><property name="text"><string>ID</string></property></item>
-         <item><property name="text"><string>Sensor ID</string></property></item>
+        <widget class="QPushButton" name="clearDatabaseButton">
+         <property name="minimumSize"><size><width>145</width><height>36</height></size></property>
+         <property name="text"><string>Очистить БД</string></property>
+         <property name="toolTip"><string>Удалить все записи из базы данных</string></property>
         </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="applyFieldButton">
-         <property name="minimumSize"><size><width>130</width><height>30</height></size></property>
-         <property name="maximumSize"><size><width>130</width><height>30</height></size></property>
-         <property name="text"><string>Применить поле</string></property>
-        </widget>
-       </item>
-       <item>
-        <spacer name="hSpacer">
-         <property name="orientation"><enum>Qt::Horizontal</enum></property>
-        </spacer>
        </item>
        <item>
         <widget class="QPushButton" name="connectButton">
-         <property name="minimumSize"><size><width>130</width><height>30</height></size></property>
-         <property name="maximumSize"><size><width>130</width><height>30</height></size></property>
+         <property name="minimumSize"><size><width>145</width><height>36</height></size></property>
          <property name="text"><string>Подключиться</string></property>
         </widget>
        </item>
