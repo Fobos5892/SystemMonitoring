@@ -2,6 +2,7 @@
 #define TELEMETRYFACADE_H
 
 #include <QObject>
+#include <QScopedPointer>
 
 class FilterViewModel;
 class StatisticsViewModel;
@@ -28,10 +29,10 @@ public:
     void applyFilter(const QString &filterCondition);
 
 private:
-    TelemetryViewModel *telemetryViewModelInstance = nullptr;
-    StatisticsViewModel *statisticsViewModelInstance = nullptr;
-    FilterViewModel *filterViewModelInstance = nullptr;
-    ThreadOrchestrator *orchestrator = nullptr;
+    QScopedPointer<TelemetryViewModel> telemetryViewModelInstance;
+    QScopedPointer<StatisticsViewModel> statisticsViewModelInstance;
+    QScopedPointer<FilterViewModel> filterViewModelInstance;
+    QScopedPointer<ThreadOrchestrator> orchestrator;
 };
 
 #endif // TELEMETRYFACADE_H

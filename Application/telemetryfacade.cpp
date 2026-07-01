@@ -7,20 +7,20 @@
 
 TelemetryFacade::TelemetryFacade(QObject *parent)
     : QObject(parent)
-    , telemetryViewModelInstance(new TelemetryViewModel(this))
-    , statisticsViewModelInstance(new StatisticsViewModel(this))
-    , filterViewModelInstance(new FilterViewModel(this))
-    , orchestrator(new ThreadOrchestrator(telemetryViewModelInstance, this))
+    , telemetryViewModelInstance(new TelemetryViewModel())
+    , statisticsViewModelInstance(new StatisticsViewModel())
+    , filterViewModelInstance(new FilterViewModel())
+    , orchestrator(new ThreadOrchestrator(telemetryViewModelInstance.data()))
 {
-    connect(orchestrator, &ThreadOrchestrator::sensorStatisticsUpdated,
-            statisticsViewModelInstance, &StatisticsViewModel::updateStatistics);
+    connect(orchestrator.data(), &ThreadOrchestrator::sensorStatisticsUpdated,
+            statisticsViewModelInstance.data(), &StatisticsViewModel::updateStatistics);
 }
 
 TelemetryFacade::~TelemetryFacade() = default;
 
 TelemetryViewModel* TelemetryFacade::telemetryViewModel() const
 {
-    return telemetryViewModelInstance;
+    return telemetryViewModelInstance.data();
 }
 
 TelemetryTableModel* TelemetryFacade::tableModel() const
@@ -30,12 +30,12 @@ TelemetryTableModel* TelemetryFacade::tableModel() const
 
 StatisticsViewModel* TelemetryFacade::statisticsViewModel() const
 {
-    return statisticsViewModelInstance;
+    return statisticsViewModelInstance.data();
 }
 
 FilterViewModel* TelemetryFacade::filterViewModel() const
 {
-    return filterViewModelInstance;
+    return filterViewModelInstance.data();
 }
 
 void TelemetryFacade::start()

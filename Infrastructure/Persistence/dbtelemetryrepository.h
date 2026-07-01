@@ -2,14 +2,17 @@
 #define DBTELEMETRYREPOSITORY_H
 
 #include "Application/Contracts/itelemetryrepository.h"
+#include "dbdatacontroll.h"
 
-class DBDataControll;
+#include <QScopedPointer>
 
 class DbTelemetryRepository : public ITelemetryRepository {
     Q_OBJECT
 
 public:
     explicit DbTelemetryRepository(DBDataControll *dataController, QObject *parent = nullptr);
+
+    DBDataControll *controller() const { return dataController.data(); }
 
 public slots:
     void initializeDatabase() override;
@@ -24,7 +27,7 @@ public slots:
     void fetchSensorStatistics() override;
 
 private:
-    DBDataControll *dataController = nullptr;
+    QScopedPointer<DBDataControll> dataController;
 };
 
 #endif // DBTELEMETRYREPOSITORY_H

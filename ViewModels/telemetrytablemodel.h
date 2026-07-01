@@ -3,6 +3,7 @@
 
 #include "Domain/telemetrytypes.h"
 #include <QAbstractTableModel>
+#include <QPointer>
 
 class TelemetryViewModel;
 
@@ -24,7 +25,7 @@ public:
     void notifyRowsRemoved(int first, int last);
 
 private:
-    TelemetryViewModel *viewModel = nullptr;
+    QPointer<TelemetryViewModel> viewModel;
 };
 
 #endif // TELEMETRYTABLEMODEL_H

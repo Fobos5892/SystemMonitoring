@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QScopedPointer>
 #include "Domain/telemetrytypes.h"
 
 QT_BEGIN_NAMESPACE
@@ -40,8 +41,8 @@ private:
     void bindStatisticsLabels();
     void updateFollowMode();
 
-    Ui::MainWindow *ui;
-    TelemetryFacade *facade = nullptr;
+    QScopedPointer<Ui::MainWindow> ui;
+    QScopedPointer<TelemetryFacade> facade;
     bool isGenerating = false;
 };
 #endif // MAINWINDOW_H

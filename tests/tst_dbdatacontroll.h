@@ -1,7 +1,11 @@
 #ifndef TST_DBDATACONTROLL_H
 #define TST_DBDATACONTROLL_H
 
+#include "Infrastructure/Persistence/dbdatacontroll.h"
+
 #include <QObject>
+#include <QScopedPointer>
+#include <QTemporaryDir>
 
 class TestDBDataControll : public QObject {
     Q_OBJECT
@@ -16,8 +20,8 @@ private slots:
     void fetchSensorStatistics_aggregatesSavedBatch();
 
 private:
-    class QTemporaryDir *tempDir = nullptr;
-    class DBDataControll *controller = nullptr;
+    QScopedPointer<QTemporaryDir> tempDir;
+    QScopedPointer<DBDataControll> controller;
 };
 
 #endif // TST_DBDATACONTROLL_H

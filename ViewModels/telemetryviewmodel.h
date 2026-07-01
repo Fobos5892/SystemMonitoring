@@ -4,6 +4,7 @@
 #include "Domain/sensordata.h"
 #include "Domain/telemetrytypes.h"
 #include <QObject>
+#include <QScopedPointer>
 #include <Qt>
 #include <QVector>
 
@@ -14,9 +15,9 @@ class TelemetryViewModel : public QObject {
 
 public:
     explicit TelemetryViewModel(QObject *parent = nullptr);
-    ~TelemetryViewModel() override = default;
+    ~TelemetryViewModel() override;
 
-    TelemetryTableModel* tableModel() const { return table; }
+    TelemetryTableModel* tableModel() const { return table.data(); }
 
     int recordCount() const { return records.size(); }
     const SensorData& recordAt(int row) const { return records.at(row); }
@@ -68,7 +69,7 @@ private:
     void trimWindowFromTop(int count);
     void trimWindowFromBottom(int count);
 
-    TelemetryTableModel *table = nullptr;
+    QScopedPointer<TelemetryTableModel> table;
 
     QVector<SensorData> records;
 

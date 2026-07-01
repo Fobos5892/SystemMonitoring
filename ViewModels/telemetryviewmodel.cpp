@@ -3,9 +3,11 @@
 
 TelemetryViewModel::TelemetryViewModel(QObject *parent)
     : QObject(parent)
-    , table(new TelemetryTableModel(this, this))
+    , table(new TelemetryTableModel(this))
 {
 }
+
+TelemetryViewModel::~TelemetryViewModel() = default;
 
 void TelemetryViewModel::setFollowLiveTail(bool follow)
 {

@@ -14,7 +14,7 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , facade(new TelemetryFacade(this))
+    , facade(new TelemetryFacade())
 {
     ui->setupUi(this);
 
@@ -99,10 +99,7 @@ MainWindow::MainWindow(QWidget *parent)
     updateFollowMode();
 }
 
-MainWindow::~MainWindow()
-{
-    delete ui;
-}
+MainWindow::~MainWindow() = default;
 
 TelemetryTableModel* MainWindow::getTableModel() const
 {

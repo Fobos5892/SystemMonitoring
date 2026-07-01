@@ -17,27 +17,25 @@ SensorData makeRecord(quint64 recordId, uint64_t sensorId, double value, uint64_
 
 void TestDBDataControll::init()
 {
-    tempDir = new QTemporaryDir();
+    tempDir.reset(new QTemporaryDir());
     QVERIFY(tempDir->isValid());
 
     const QString dbPath = tempDir->filePath(QStringLiteral("test_telemetry.db"));
-    controller = new DBDataControll(dbPath);
+    controller.reset(new DBDataControll(dbPath));
     controller->initializeDatabase();
 }
 
 void TestDBDataControll::cleanup()
 {
-    delete controller;
-    controller = nullptr;
-    delete tempDir;
-    tempDir = nullptr;
+    controller.reset();
+    tempDir.reset();
 }
 
 void TestDBDataControll::initializeDatabase_createsPersistentSchema()
 {
-    QVERIFY(controller != nullptr);
+    QVERIFY(controller);
 
-    QSignalSpy statsSpy(controller, &DBDataControll::sensorStatisticsLoaded);
+    QSignalSpy statsSpy(controller.data(), &DBDataControll::sensorStatisticsLoaded);
     controller->fetchSensorStatistics();
     QCOMPARE(statsSpy.count(), 1);
 }
@@ -52,7 +50,7 @@ void TestDBDataControll::saveAndFetch_sortedByTimestamp()
 
     controller->onSaveBatchToSql(batch);
 
-    QSignalSpy dataSpy(controller, &DBDataControll::dataLoaded);
+    QSignalSpy dataSpy(controller.data(), &DBDataControll::dataLoaded);
     controller->fetchSortedWindow(static_cast<int>(Telemetry::Column::Timestamp),
                                   static_cast<int>(Qt::AscendingOrder),
                                   10);
@@ -68,11 +66,11 @@ void TestDBDataControll::clearDatabase_removesRows()
 {
     controller->onSaveBatchToSql({makeRecord(0, 1, 5.0, 5000)});
 
-    QSignalSpy clearedSpy(controller, &DBDataControll::databaseCleared);
+    QSignalSpy clearedSpy(controller.data(), &DBDataControll::databaseCleared);
     controller->clearDatabase();
     QCOMPARE(clearedSpy.count(), 1);
 
-    QSignalSpy dataSpy(controller, &DBDataControll::dataLoaded);
+    QSignalSpy dataSpy(controller.data(), &DBDataControll::dataLoaded);
     controller->fetchSortedWindow(static_cast<int>(Telemetry::Column::Timestamp),
                                   static_cast<int>(Qt::AscendingOrder),
                                   10);
@@ -89,7 +87,7 @@ void TestDBDataControll::fetchSensorStatistics_aggregatesSavedBatch()
         makeRecord(0, 3, 20.0, nowMs),
     });
 
-    QSignalSpy statsSpy(controller, &DBDataControll::sensorStatisticsLoaded);
+    QSignalSpy statsSpy(controller.data(), &DBDataControll::sensorStatisticsLoaded);
     controller->fetchSensorStatistics();
     QCOMPARE(statsSpy.count(), 1);
 

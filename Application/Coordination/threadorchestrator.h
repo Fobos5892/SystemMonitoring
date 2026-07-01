@@ -2,6 +2,7 @@
 #define THREADORCHESTRATOR_H
 
 #include <QObject>
+#include <QPointer>
 #include <QThread>
 #include <QScopedPointer>
 #include <QString>
@@ -11,7 +12,6 @@
 
 class DeviceSimulator;
 class DeviceReceiver;
-class DBDataControll;
 class DbTelemetryRepository;
 class ITelemetryRepository;
 class TelemetryViewModel;
@@ -47,12 +47,11 @@ private:
     void setupRepositoryOutputConnections();
     void setupViewModelQueryConnections();
 
-    TelemetryViewModel *viewModel = nullptr;
-    ITelemetryRepository *repository = nullptr;
+    QPointer<TelemetryViewModel> viewModel;
+    QPointer<ITelemetryRepository> repository;
 
     QScopedPointer<DeviceSimulator> simulator;
     QScopedPointer<DeviceReceiver> receiver;
-    QScopedPointer<DBDataControll> dataController;
     QScopedPointer<DbTelemetryRepository> repositoryAdapter;
 
     QThread simulatorThread;

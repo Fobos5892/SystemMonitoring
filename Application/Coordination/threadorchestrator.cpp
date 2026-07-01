@@ -10,8 +10,7 @@ ThreadOrchestrator::ThreadOrchestrator(TelemetryViewModel *viewModel, QObject *p
     , viewModel(viewModel)
     , simulator(new DeviceSimulator())
     , receiver(new DeviceReceiver())
-    , dataController(new DBDataControll("telemetry.db"))
-    , repositoryAdapter(new DbTelemetryRepository(dataController.data()))
+    , repositoryAdapter(new DbTelemetryRepository(new DBDataControll("telemetry.db")))
 {
     repository = repositoryAdapter.data();
 
@@ -30,7 +29,7 @@ ThreadOrchestrator::~ThreadOrchestrator() {
 void ThreadOrchestrator::initThreads() {
     simulator->moveToThread(&simulatorThread);
     receiver->moveToThread(&receiverThread);
-    dataController->moveToThread(&sqlThread);
+    repositoryAdapter->controller()->moveToThread(&sqlThread);
     repositoryAdapter->moveToThread(&sqlThread);
 }
 
@@ -111,7 +110,7 @@ void ThreadOrchestrator::stopAll() {
         receiverThread.wait();
     }
     if (sqlThread.isRunning()) {
-        QMetaObject::invokeMethod(dataController.data(), "shutdownDatabase",
+        QMetaObject::invokeMethod(repositoryAdapter->controller(), "shutdownDatabase",
                                   Qt::BlockingQueuedConnection);
         sqlThread.quit();
         sqlThread.wait();
