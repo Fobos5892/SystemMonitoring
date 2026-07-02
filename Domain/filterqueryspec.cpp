@@ -1,6 +1,5 @@
 #include "filterqueryspec.h"
 
-#include <cmath>
 #include <QtGlobal>
 
 FilterQuerySpec::Field FilterQuerySpec::field() const
@@ -40,53 +39,33 @@ qint64 FilterQuerySpec::toTimestampMs() const
 
 void FilterQuerySpec::setField(Field field)
 {
-    if (m_field == field) {
-        return;
-    }
     m_field = field;
 }
 
 void FilterQuerySpec::setSensorId(int sensorId)
 {
-    if (m_sensorId == sensorId) {
-        return;
-    }
     m_sensorId = sensorId;
 }
 
 void FilterQuerySpec::setValue(double value)
 {
-    if (std::fabs(m_value - value) < 1e-9) {
-        return;
-    }
     m_value = value;
 }
 
 void FilterQuerySpec::setTolerance(double tolerance)
 {
-    if (std::fabs(m_tolerance - tolerance) < 1e-9) {
-        return;
-    }
     m_tolerance = tolerance;
 }
 
 void FilterQuerySpec::setValueOperation(ValueOperation operation)
 {
-    if (m_valueOperation == operation) {
-        return;
-    }
     m_valueOperation = operation;
 }
 
 void FilterQuerySpec::setTimestampRange(qint64 fromMs, qint64 toMs)
 {
-    const qint64 from = qMin(fromMs, toMs);
-    const qint64 to = qMax(fromMs, toMs);
-    if (m_fromTimestampMs == from && m_toTimestampMs == to) {
-        return;
-    }
-    m_fromTimestampMs = from;
-    m_toTimestampMs = to;
+    m_fromTimestampMs = qMin(fromMs, toMs);
+    m_toTimestampMs = qMax(fromMs, toMs);
 }
 
 QString FilterQuerySpec::toSqlCondition(const QString &tableAlias) const
@@ -100,8 +79,8 @@ QString FilterQuerySpec::toSqlCondition(const QString &tableAlias) const
     case Field::SensorId:
         return QStringLiteral("%1 = %2").arg(column("sensor_id")).arg(m_sensorId);
     case Field::Value: {
-        const QString valueSql = QString::number(m_value, 'f', 2);
-        const QString toleranceSql = QString::number(m_tolerance, 'f', 4);
+        const QString valueSql = QString::number(m_value, 'f', SENSOR_VALUE_DECIMAL_PLACES);
+        const QString toleranceSql = QString::number(m_tolerance, 'f', TOLERANCE_DECIMAL_PLACES);
         const QString valueColumn = column("value");
 
         switch (m_valueOperation) {
@@ -109,10 +88,12 @@ QString FilterQuerySpec::toSqlCondition(const QString &tableAlias) const
             return QStringLiteral("ABS(%1 - %2) <= %3").arg(valueColumn, valueSql, toleranceSql);
         case ValueOperation::Greater:
             return QStringLiteral("%1 > %2")
-                .arg(valueColumn, QString::number(m_value + m_tolerance, 'f', 4));
+                .arg(valueColumn,
+                     QString::number(m_value + m_tolerance, 'f', TOLERANCE_DECIMAL_PLACES));
         case ValueOperation::Less:
             return QStringLiteral("%1 < %2")
-                .arg(valueColumn, QString::number(m_value - m_tolerance, 'f', 4));
+                .arg(valueColumn,
+                     QString::number(m_value - m_tolerance, 'f', TOLERANCE_DECIMAL_PLACES));
         }
         return {};
     }

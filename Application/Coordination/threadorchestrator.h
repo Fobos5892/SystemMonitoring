@@ -42,6 +42,8 @@ public slots:
                                     int limit, Telemetry::AnchorSide side);
 
 private:
+    static constexpr int FILTER_REFRESH_DEBOUNCE_MS = 300;
+
     void initThreads();
     void setupConnections();
     void setupSensorConnections();

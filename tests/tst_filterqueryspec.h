@@ -9,13 +9,7 @@ class TestFilterQuerySpec : public QObject {
 private slots:
     void gettersReturnDefaults();
     void settersUpdateValues();
-    void setField_skipsDuplicate();
-    void setSensorId_skipsDuplicate();
-    void setValue_skipsNearDuplicate();
-    void setTolerance_skipsNearDuplicate();
-    void setValueOperation_skipsDuplicate();
     void setTimestampRange_ordersBounds();
-    void setTimestampRange_skipsDuplicate();
     void toSqlCondition_sensorId();
     void toSqlCondition_valueNear();
     void toSqlCondition_valueGreater();

@@ -1,5 +1,6 @@
 #include "telemetrytablemodel.h"
 #include "telemetryviewmodel.h"
+#include "Domain/datetimeformats.h"
 
 #include <QDateTime>
 #include <QLocale>
@@ -7,7 +8,7 @@
 
 namespace {
 
-const std::unordered_map<int, QString> kColumnTitles = {
+const std::unordered_map<int, QString> COLUMN_TITLES = {
     {static_cast<int>(Telemetry::Column::RecordId), QStringLiteral("№ записи")},
     {static_cast<int>(Telemetry::Column::SensorId), QStringLiteral("№датчика")},
     {static_cast<int>(Telemetry::Column::Value), QStringLiteral("Значение")},
@@ -33,9 +34,9 @@ int TelemetryTableModel::rowCount(const QModelIndex &parent) const
 int TelemetryTableModel::columnCount(const QModelIndex &parent) const
 {
     if (parent.isValid()) {
-        return Telemetry::DEFAULT_CHILD_COLUMN_COUNT;
+        return 0;
     }
-    return static_cast<int>(kColumnTitles.size());
+    return static_cast<int>(COLUMN_TITLES.size());
 }
 
 QVariant TelemetryTableModel::data(const QModelIndex &index, int role) const
@@ -58,8 +59,8 @@ QVariant TelemetryTableModel::data(const QModelIndex &index, int role) const
     case Telemetry::Column::Value:
         return record.value;
     case Telemetry::Column::Timestamp:
-        return QLocale::system().toString(
-            QDateTime::fromMSecsSinceEpoch(record.timestamp), "yyyy-MM-dd HH:mm:ss");
+        return QLocale::system().toString(QDateTime::fromMSecsSinceEpoch(record.timestamp),
+                                          DatetimeFormats::DATE_TIME_PATTERN);
     }
     return QVariant();
 }
@@ -69,8 +70,8 @@ QVariant TelemetryTableModel::headerData(int section, Qt::Orientation orientatio
     if (role != Qt::DisplayRole || orientation != Qt::Horizontal) {
         return QVariant();
     }
-    const auto it = kColumnTitles.find(section);
-    if (it != kColumnTitles.end()) {
+    const auto it = COLUMN_TITLES.find(section);
+    if (it != COLUMN_TITLES.end()) {
         return it->second;
     }
     return QVariant();

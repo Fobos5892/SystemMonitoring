@@ -9,7 +9,7 @@ DeviceSimulator::DeviceSimulator(QObject *parent)
 
 void DeviceSimulator::startGeneration()
 {
-    m_timer.start(30);
+    m_timer.start(GENERATION_INTERVAL_MS);
 }
 
 void DeviceSimulator::stopGeneration()
@@ -20,14 +20,14 @@ void DeviceSimulator::stopGeneration()
 void DeviceSimulator::generateDataTick()
 {
     QVector<SensorData> batch;
-    batch.reserve(50);
+    batch.reserve(GENERATION_BATCH_SIZE);
 
     const uint64_t currentTimestamp = QDateTime::currentMSecsSinceEpoch();
 
-    for (int i = 0; i < 50; ++i) {
+    for (int i = 0; i < GENERATION_BATCH_SIZE; ++i) {
         SensorData data;
-        data.recordId = 0;
-        data.sensorId = QRandomGenerator::global()->bounded(1, 10001);
+        data.recordId = SensorData::DEFAULT_RECORD_ID;
+        data.sensorId = QRandomGenerator::global()->bounded(MIN_SENSOR_ID, EXCLUSIVE_MAX_SENSOR_ID);
         data.timestamp = currentTimestamp;
         data.value = MIN_VOLTAGE
             + QRandomGenerator::global()->generateDouble() * (MAX_VOLTAGE - MIN_VOLTAGE);

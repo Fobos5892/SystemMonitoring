@@ -1,43 +1,28 @@
 #include "tst_sensorstatistics.h"
 #include "Domain/sensorstatistics.h"
+#include "testconstants.h"
 
 #include <QtTest>
 
 void TestSensorStatistics::gettersReturnDefaults()
 {
     const SensorStatistics stats;
-    QCOMPARE(stats.connectedCount(), 0);
-    QCOMPARE(stats.averageValue(), 0.0);
-    QCOMPARE(stats.minimumValue(), 0.0);
-    QCOMPARE(stats.maximumValue(), 0.0);
+    QCOMPARE(stats.connectedCount(), SensorStatistics::DEFAULT_CONNECTED_COUNT);
+    QCOMPARE(stats.averageValue(), SensorStatistics::DEFAULT_AVERAGE_VALUE);
+    QCOMPARE(stats.minimumValue(), SensorStatistics::DEFAULT_MINIMUM_VALUE);
+    QCOMPARE(stats.maximumValue(), SensorStatistics::DEFAULT_MAXIMUM_VALUE);
 }
 
 void TestSensorStatistics::settersUpdateValues()
 {
     SensorStatistics stats;
-    stats.setConnectedCount(3);
-    stats.setAverageValue(12.34);
-    stats.setMinimumValue(1.0);
-    stats.setMaximumValue(99.9);
+    stats.setConnectedCount(TestConstants::STATS_CONNECTED_COUNT);
+    stats.setAverageValue(TestConstants::STATS_AVERAGE);
+    stats.setMinimumValue(TestConstants::STATS_MINIMUM);
+    stats.setMaximumValue(TestConstants::STATS_MAXIMUM);
 
-    QCOMPARE(stats.connectedCount(), 3);
-    QCOMPARE(stats.averageValue(), 12.34);
-    QCOMPARE(stats.minimumValue(), 1.0);
-    QCOMPARE(stats.maximumValue(), 99.9);
-}
-
-void TestSensorStatistics::setConnectedCount_skipsDuplicate()
-{
-    SensorStatistics stats;
-    stats.setConnectedCount(5);
-    stats.setConnectedCount(5);
-    QCOMPARE(stats.connectedCount(), 5);
-}
-
-void TestSensorStatistics::setDoubleFields_skipsNearDuplicate()
-{
-    SensorStatistics stats;
-    stats.setAverageValue(10.0);
-    stats.setAverageValue(10.0 + 1e-12);
-    QCOMPARE(stats.averageValue(), 10.0);
+    QCOMPARE(stats.connectedCount(), TestConstants::STATS_CONNECTED_COUNT);
+    QCOMPARE(stats.averageValue(), TestConstants::STATS_AVERAGE);
+    QCOMPARE(stats.minimumValue(), TestConstants::STATS_MINIMUM);
+    QCOMPARE(stats.maximumValue(), TestConstants::STATS_MAXIMUM);
 }

@@ -16,7 +16,7 @@ ThreadOrchestrator::ThreadOrchestrator(TelemetryViewModel *viewModel, QObject *p
     repository = repositoryAdapter.data();
 
     filterRefreshTimer.setSingleShot(true);
-    filterRefreshTimer.setInterval(300);
+    filterRefreshTimer.setInterval(FILTER_REFRESH_DEBOUNCE_MS);
     connect(&filterRefreshTimer, &QTimer::timeout,
             this, &ThreadOrchestrator::onDebouncedFilterRefresh);
     initThreads();

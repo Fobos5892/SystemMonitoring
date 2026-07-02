@@ -16,6 +16,7 @@ private slots:
     void buildQuerySpec_valueLess();
     void buildQuerySpec_timestampRange_ordersBounds();
     void combineLocalDateTime_producesValidEpoch();
+    void combineLocalDateTime_roundTripsThroughString();
     void buildQuerySpec_timestampOnlyWhenFieldIsTimestamp();
 };
 

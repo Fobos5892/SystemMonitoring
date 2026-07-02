@@ -35,6 +35,10 @@ HEADERS += \
     tst_telemetryviewmodel.h \
     tst_dbdatacontroll.h \
     $$ROOT/Domain/telemetrytypes.h \
+    $$ROOT/Domain/datetimeformats.h \
+    $$ROOT/Domain/filterlimits.h \
+    $$ROOT/Domain/sensorlimits.h \
+    $$ROOT/Domain/filterqueryspec.h \
     $$ROOT/ViewModels/filterviewmodel.h \
     $$ROOT/ViewModels/statisticsviewmodel.h \
     $$ROOT/ViewModels/telemetrytablemodel.h \

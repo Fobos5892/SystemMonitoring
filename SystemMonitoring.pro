@@ -28,6 +28,9 @@ HEADERS += \
     Application/Coordination/threadorchestrator.h \
     Application/telemetryfacade.h \
     Domain/metatypes.h \
+    Domain/datetimeformats.h \
+    Domain/filterlimits.h \
+    Domain/sensorlimits.h \
     Domain/sensordata.h \
     Domain/sensorstatistics.h \
     Domain/filterqueryspec.h \

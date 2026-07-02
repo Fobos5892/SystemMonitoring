@@ -8,6 +8,7 @@
 
 namespace DbConnection {
 inline constexpr const char SQL_WORKER_CONNECTION_NAME[] = "SQL_Worker_Connection";
+static constexpr int SQLITE_PAGE_CACHE_KIB = -200000; // ~200 MB page cache
 }
 
 class DatabaseConnectionManager : public QObject {

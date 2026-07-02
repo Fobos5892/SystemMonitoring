@@ -1,3 +1,4 @@
+#include "Domain/filterqueryspec.h"
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "Application/telemetryfacade.h"
@@ -23,14 +24,8 @@ MainWindow::MainWindow(QWidget *parent)
     TelemetryViewModel *const viewModel = facade->telemetryViewModel();
 
     ui->SystemTableView->setModel(tableModel);
-    ui->SystemTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
-    ui->SystemTableView->horizontalHeader()->setMinimumSectionSize(60);
-    ui->SystemTableView->setColumnWidth(0, 90);
-    ui->SystemTableView->setColumnWidth(1, 90);
-    ui->SystemTableView->setColumnWidth(2, 130);
-    ui->SystemTableView->setColumnWidth(3, 260);
+    configureTableColumns();
     ui->SystemTableView->horizontalHeader()->setStretchLastSection(true);
-    ui->SystemTableView->verticalHeader()->setVisible(false);
 
     facade->start();
 
@@ -69,9 +64,11 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->tableStackedWidget->setCurrentWidget(ui->tablePage);
 
+    configureFilterControls();
+
     const QDateTime now = QDateTime::currentDateTime();
     ui->filterDateFrom->setDate(now.date());
-    ui->filterTimeFrom->setTime(QTime(0, 0));
+    ui->filterTimeFrom->setTime(FilterViewModel::DAY_START_TIME);
     ui->filterDateTo->setDate(now.date());
     ui->filterTimeTo->setTime(now.time());
 
@@ -159,8 +156,8 @@ void MainWindow::syncFilterViewModelFromUi()
     FilterViewModel *const filterVm = facade->filterViewModel();
     const QDateTime fromDateTime =
         FilterViewModel::combineLocalDateTime(ui->filterDateFrom->date(), ui->filterTimeFrom->time());
-    const QDateTime toDateTime =
-        FilterViewModel::combineLocalDateTime(ui->filterDateTo->date(), ui->filterTimeTo->time());
+    const QDateTime toDateTime = FilterViewModel::combineLocalDateTime(
+        ui->filterDateTo->date(), ui->filterTimeTo->time(), true);
     filterVm->setField(static_cast<FilterViewModel::Field>(ui->filterFieldComboBox->currentIndex()));
     filterVm->setSensorId(ui->filterSpinBox->value());
     filterVm->setValueFilter(
@@ -240,4 +237,35 @@ void MainWindow::setControlsEnabled(bool enabled)
     ui->filterValueStack->setEnabled(enabled);
     ui->clearDatabaseButton->setEnabled(enabled);
     ui->connectButton->setEnabled(enabled);
+}
+
+void MainWindow::configureTableColumns()
+{
+    ui->SystemTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    ui->SystemTableView->horizontalHeader()->setMinimumSectionSize(MIN_TABLE_COLUMN_WIDTH);
+    ui->SystemTableView->setColumnWidth(static_cast<int>(Telemetry::Column::RecordId),
+                                        RECORD_ID_COLUMN_WIDTH);
+    ui->SystemTableView->setColumnWidth(static_cast<int>(Telemetry::Column::SensorId),
+                                        SENSOR_ID_COLUMN_WIDTH);
+    ui->SystemTableView->setColumnWidth(static_cast<int>(Telemetry::Column::Value),
+                                        VALUE_COLUMN_WIDTH);
+    ui->SystemTableView->setColumnWidth(static_cast<int>(Telemetry::Column::Timestamp),
+                                        TIMESTAMP_COLUMN_WIDTH);
+    ui->SystemTableView->verticalHeader()->setVisible(false);
+}
+
+void MainWindow::configureFilterControls()
+{
+    ui->filterSpinBox->setMinimum(FilterQuerySpec::DEFAULT_SENSOR_ID);
+    ui->filterSpinBox->setMaximum(FilterLimits::MAX_SENSOR_ID);
+
+    ui->filterDoubleSpinBox->setDecimals(FilterLimits::SENSOR_VALUE_DECIMAL_PLACES);
+    ui->filterDoubleSpinBox->setMinimum(FilterLimits::MIN_SENSOR_VALUE_VOLTS);
+    ui->filterDoubleSpinBox->setMaximum(FilterLimits::MAX_SENSOR_VALUE_VOLTS);
+    ui->filterDoubleSpinBox->setSingleStep(FilterLimits::COARSE_TOLERANCE_STEP);
+
+    ui->filterToleranceSpinBox->setDecimals(FilterLimits::TOLERANCE_DECIMAL_PLACES);
+    ui->filterToleranceSpinBox->setMinimum(FilterLimits::MIN_TOLERANCE);
+    ui->filterToleranceSpinBox->setMaximum(FilterLimits::MAX_TOLERANCE);
+    ui->filterToleranceSpinBox->setSingleStep(FilterLimits::TOLERANCE_SPINBOX_SINGLE_STEP);
 }

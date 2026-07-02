@@ -96,7 +96,10 @@ bool DatabaseConnectionManager::applyPerformancePragmas() {
     // Асинхронная запись на диск (не ждем физического вращения шпинделя/памяти)
     if (!query.exec("PRAGMA synchronous = OFF;")) goto error;
     // Выделяем ~200 Мегабайт под кэш страниц в оперативной памяти
-    if (!query.exec("PRAGMA cache_size = -200000;")) goto error;
+    if (!query.exec(QStringLiteral("PRAGMA cache_size = %1;")
+                        .arg(DbConnection::SQLITE_PAGE_CACHE_KIB))) {
+        goto error;
+    }
     // Временные файлы и таблицы хранятся строго в ОЗУ
     if (!query.exec("PRAGMA temp_store = MEMORY;")) goto error;
 

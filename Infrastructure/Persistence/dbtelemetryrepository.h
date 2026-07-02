@@ -27,6 +27,9 @@ public slots:
     void clearDatabase() override;
     void fetchSensorStatistics() override;
 
+private slots:
+    void runFilterQuery(FilterQuerySpec filterSpec, int sortColumn, int sortOrder, int limit);
+
 private:
     QScopedPointer<DBDataControll> dataController;
 };

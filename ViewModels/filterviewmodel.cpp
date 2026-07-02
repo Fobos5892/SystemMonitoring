@@ -6,14 +6,50 @@
 
 FilterViewModel::FilterViewModel(QObject *parent)
     : QObject(parent)
-    , dateFrom(QDateTime(QDate::currentDate(), QTime(0, 0), QTimeZone::systemTimeZone()))
-    , dateTo(QDateTime::currentDateTime())
+    , dateFrom(combineLocalDateTime(QDate::currentDate(), DAY_START_TIME))
+    , dateTo(combineLocalDateTime(QDate::currentDate(), QTime::currentTime(), true))
 {
 }
 
-QDateTime FilterViewModel::combineLocalDateTime(const QDate &date, const QTime &time)
+QDateTime FilterViewModel::combineLocalDateTime(const QDate &date, const QTime &time,
+                                                bool inclusiveEnd)
 {
-    return QDateTime(date, time, QTimeZone::systemTimeZone());
+    if (!date.isValid() || !time.isValid()) {
+        return {};
+    }
+
+    QTime effectiveTime = time;
+    if (inclusiveEnd) {
+        effectiveTime = time.addSecs(INCLUSIVE_END_EXTRA_SECONDS)
+                            .addMSecs(INCLUSIVE_END_EXTRA_MILLISECONDS);
+    }
+
+    const QString dateTimeText = QStringLiteral("%1 %2")
+        .arg(date.toString(DatetimeFormats::DATE_PATTERN),
+             effectiveTime.toString(DatetimeFormats::TIME_PATTERN));
+
+    return parseLocalDateTimeText(dateTimeText);
+}
+
+QDateTime FilterViewModel::parseLocalDateTimeText(const QString &dateTimeText)
+{
+    QDateTime result = QDateTime::fromString(dateTimeText, DatetimeFormats::DATE_TIME_PATTERN);
+    if (!result.isValid()) {
+        return {};
+    }
+    result.setTimeZone(QTimeZone::systemTimeZone());
+    return result;
+}
+
+qint64 FilterViewModel::epochMsFromDateTime(const QDateTime &dateTime)
+{
+    if (!dateTime.isValid()) {
+        return QDateTime::currentMSecsSinceEpoch();
+    }
+
+    const QDateTime normalized =
+        parseLocalDateTimeText(dateTime.toString(DatetimeFormats::DATE_TIME_PATTERN));
+    return normalized.isValid() ? normalized.toMSecsSinceEpoch() : dateTime.toMSecsSinceEpoch();
 }
 
 void FilterViewModel::setField(Field field)
@@ -41,23 +77,27 @@ void FilterViewModel::setTimestampRange(const QDateTime &from, const QDateTime &
 
 double FilterViewModel::truncateTo(double value, int decimals)
 {
-    const double scale = std::pow(10.0, decimals);
+    const double scale = std::pow(DECIMAL_RADIX, decimals);
     return std::floor(value * scale) / scale;
 }
 
 double FilterViewModel::normalizeValue(double value)
 {
-    return truncateTo(std::clamp(value, 0.0, 280.0), 2);
+    return truncateTo(std::clamp(value, FilterLimits::MIN_SENSOR_VALUE_VOLTS,
+                               FilterLimits::MAX_SENSOR_VALUE_VOLTS),
+                      FilterLimits::SENSOR_VALUE_DECIMAL_PLACES);
 }
 
 double FilterViewModel::normalizeTolerance(double tolerance)
 {
-    return truncateTo(std::clamp(tolerance, 0.0, 1.0), 4);
+    return truncateTo(std::clamp(tolerance, FilterLimits::MIN_TOLERANCE, FilterLimits::MAX_TOLERANCE),
+                      FilterLimits::TOLERANCE_DECIMAL_PLACES);
 }
 
 double FilterViewModel::adaptiveToleranceStep(double tolerance)
 {
-    return tolerance < 0.01 ? 0.0001 : 0.01;
+    return tolerance < FilterLimits::SMALL_TOLERANCE_THRESHOLD ? FilterLimits::FINE_TOLERANCE_STEP
+                                                               : FilterLimits::COARSE_TOLERANCE_STEP;
 }
 
 FilterQuerySpec FilterViewModel::buildQuerySpec() const
@@ -72,9 +112,8 @@ FilterQuerySpec FilterViewModel::buildQuerySpec() const
     if (field == Field::Timestamp) {
         const QDateTime from = dateFrom.isValid() ? dateFrom : QDateTime::currentDateTime();
         const QDateTime to = dateTo.isValid() ? dateTo : QDateTime::currentDateTime();
-        spec.setTimestampRange(from.toMSecsSinceEpoch(), to.toMSecsSinceEpoch());
+        spec.setTimestampRange(epochMsFromDateTime(from), epochMsFromDateTime(to));
     }
 
     return spec;
 }
-

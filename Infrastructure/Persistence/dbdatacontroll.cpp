@@ -9,17 +9,24 @@
 
 namespace {
 
+enum class StatisticsSelectColumn : int {
+    ConnectedCount = 0,
+    AverageValue = 1,
+    MinimumValue = 2,
+    MaximumValue = 3,
+};
+
 SensorData readSensorRow(const QSqlQuery &query) {
     return {
-        query.value(0).toULongLong(),
-        query.value(1).toULongLong(),
-        query.value(3).toULongLong(),
-        query.value(2).toDouble()
+        query.value(static_cast<int>(Telemetry::Column::RecordId)).toULongLong(),
+        query.value(static_cast<int>(Telemetry::Column::SensorId)).toULongLong(),
+        query.value(static_cast<int>(Telemetry::Column::Timestamp)).toULongLong(),
+        query.value(static_cast<int>(Telemetry::Column::Value)).toDouble()
     };
 }
 
 /**
- * WHERE-условие для выборки записей рядом с якорем.
+ * формируем WHERE-условие для выборки записей рядом с якорем.
  * @column - колонка сортировки (без префикса t.)
  * @ascending - порядок сортировки таблицы
  * @side - Top: строки выше якоря, Bottom: строки ниже якоря
@@ -33,7 +40,7 @@ QString getNewDataNearAnchor(const QString &column, bool ascending, Telemetry::A
 }
 
 /**
- * ORDER BY для range-запросов относительно якорной строки.
+ * формируем ORDER BY для range-запросов относительно якорной строки.
  * @column - имя колонки сортировки (без префикса t.)
  * @ascending - порядок сортировки таблицы
  * @side - Top: строки выше якоря, Bottom: строки ниже якоря
@@ -158,21 +165,25 @@ bool DBDataControll::ensureSchema() {
 }
 
 QString DBDataControll::sortColumnSql(int sortColumn) {
-    switch (sortColumn) {
-    case 0: return QStringLiteral("id");
-    case 1: return QStringLiteral("sensor_id");
-    case 2: return QStringLiteral("value");
-    case 3: return QStringLiteral("timestamp");
-    default: return QStringLiteral("timestamp");
+    switch (static_cast<Telemetry::Column>(sortColumn)) {
+    case Telemetry::Column::RecordId:
+        return QStringLiteral("id");
+    case Telemetry::Column::SensorId:
+        return QStringLiteral("sensor_id");
+    case Telemetry::Column::Value:
+        return QStringLiteral("value");
+    case Telemetry::Column::Timestamp:
+        return QStringLiteral("timestamp");
     }
+    return QStringLiteral("timestamp");
 }
 
 SensorData DBDataControll::readRow(const QSqlQuery &query) {
     return {
-        query.value(0).toULongLong(),
-        query.value(1).toULongLong(),
-        query.value(3).toULongLong(),
-        query.value(2).toDouble()
+        query.value(static_cast<int>(Telemetry::Column::RecordId)).toULongLong(),
+        query.value(static_cast<int>(Telemetry::Column::SensorId)).toULongLong(),
+        query.value(static_cast<int>(Telemetry::Column::Timestamp)).toULongLong(),
+        query.value(static_cast<int>(Telemetry::Column::Value)).toDouble()
     };
 }
 
@@ -219,11 +230,14 @@ SensorStatistics DBDataControll::loadSensorStatistics() const {
     query.prepare(QStringLiteral(
         "SELECT "
         "  COUNT(DISTINCT sensor_id), "
-        "  COALESCE(AVG(value), 0), "
-        "  COALESCE(MIN(value), 0), "
-        "  COALESCE(MAX(value), 0) "
+        "  COALESCE(AVG(value), %1), "
+        "  COALESCE(MIN(value), %2), "
+        "  COALESCE(MAX(value), %3) "
         "FROM telemetry "
-        "WHERE timestamp >= :cutoff"));
+        "WHERE timestamp >= :cutoff")
+            .arg(SensorStatistics::DEFAULT_AVERAGE_VALUE)
+            .arg(SensorStatistics::DEFAULT_MINIMUM_VALUE)
+            .arg(SensorStatistics::DEFAULT_MAXIMUM_VALUE));
     query.bindValue(":cutoff", cutoffMs);
 
     if (!query.exec()) {
@@ -232,10 +246,14 @@ SensorStatistics DBDataControll::loadSensorStatistics() const {
     }
 
     if (query.next()) {
-        stats.setConnectedCount(query.value(0).toInt());
-        stats.setAverageValue(query.value(1).toDouble());
-        stats.setMinimumValue(query.value(2).toDouble());
-        stats.setMaximumValue(query.value(3).toDouble());
+        stats.setConnectedCount(
+            query.value(static_cast<int>(StatisticsSelectColumn::ConnectedCount)).toInt());
+        stats.setAverageValue(
+            query.value(static_cast<int>(StatisticsSelectColumn::AverageValue)).toDouble());
+        stats.setMinimumValue(
+            query.value(static_cast<int>(StatisticsSelectColumn::MinimumValue)).toDouble());
+        stats.setMaximumValue(
+            query.value(static_cast<int>(StatisticsSelectColumn::MaximumValue)).toDouble());
     }
 
     return stats;
@@ -246,7 +264,7 @@ QVector<SensorData> DBDataControll::loadSortedWindowWithFilter(const FilterQuery
                                                                int limit) const {
     const QString filterSqlCondition = filterSpec.toSqlCondition();
     QVector<SensorData> result;
-    if (limit <= 0) {
+    if (limit < Telemetry::MIN_REQUEST_LIMIT) {
         return result;
     }
 
@@ -351,7 +369,7 @@ void DBDataControll::fetchSortedTail(int sortColumn, int sortOrder, int limit) {
 void DBDataControll::fetchRangeNearAnchor(int sortColumn, int sortOrder,
                                           quint64 anchorRecordId, int limit,
                                           Telemetry::AnchorSide side) {
-    if (!m_dbInitialized || anchorRecordId == 0) {
+    if (!m_dbInitialized || anchorRecordId == SensorData::DEFAULT_RECORD_ID) {
         emit rangeNearAnchorLoaded({}, side);
         return;
     }

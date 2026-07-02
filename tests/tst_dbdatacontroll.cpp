@@ -1,7 +1,11 @@
 #include "tst_dbdatacontroll.h"
+#include "Domain/sensorstatistics.h"
+#include "Domain/telemetrytypes.h"
+#include "testconstants.h"
 #include "testhelpers.h"
 #include "Domain/filterqueryspec.h"
 #include "Infrastructure/Persistence/dbdatacontroll.h"
+#include "ViewModels/filterviewmodel.h"
 
 #include <QDateTime>
 #include <QSignalSpy>
@@ -36,9 +40,12 @@ void TestDBDataControll::initializeDatabase_createsPersistentSchema()
 void TestDBDataControll::saveAndFetch_sortedByTimestamp()
 {
     const QVector<SensorData> batch = {
-        TestHelpers::makeRecord(0, 1, 10.0, 1000),
-        TestHelpers::makeRecord(0, 2, 20.0, 2000),
-        TestHelpers::makeRecord(0, 1, 30.0, 3000),
+        TestHelpers::makeRecord(SensorData::DEFAULT_RECORD_ID, TestConstants::DB_SENSOR_ID_FIRST,
+                                TestConstants::DB_VALUE_LOW, TestConstants::DB_TIMESTAMP_FIRST),
+        TestHelpers::makeRecord(SensorData::DEFAULT_RECORD_ID, TestConstants::DB_SENSOR_ID_SECOND,
+                                TestConstants::DB_VALUE_MID, TestConstants::DB_TIMESTAMP_SECOND),
+        TestHelpers::makeRecord(SensorData::DEFAULT_RECORD_ID, TestConstants::DB_SENSOR_ID_FIRST,
+                                TestConstants::DB_VALUE_HIGH, TestConstants::DB_TIMESTAMP_THIRD),
     };
 
     controller->onSaveBatchToSql(batch);
@@ -46,18 +53,20 @@ void TestDBDataControll::saveAndFetch_sortedByTimestamp()
     QSignalSpy dataSpy(controller.data(), &DBDataControll::dataLoaded);
     controller->fetchSortedWindow(static_cast<int>(Telemetry::Column::Timestamp),
                                   static_cast<int>(Qt::AscendingOrder),
-                                  10);
+                                  TestConstants::DEFAULT_QUERY_LIMIT);
     QCOMPARE(dataSpy.count(), 1);
 
     const auto loaded = dataSpy.at(0).at(0).value<QVector<SensorData>>();
-    QCOMPARE(loaded.size(), 3);
-    QCOMPARE(loaded.first().timestamp, 1000u);
-    QCOMPARE(loaded.last().timestamp, 3000u);
+    QCOMPARE(loaded.size(), TestConstants::DB_EXPECTED_ROW_COUNT);
+    QCOMPARE(loaded.first().timestamp, TestConstants::DB_TIMESTAMP_FIRST);
+    QCOMPARE(loaded.last().timestamp, TestConstants::DB_TIMESTAMP_THIRD);
 }
 
 void TestDBDataControll::clearDatabase_removesRows()
 {
-    controller->onSaveBatchToSql({TestHelpers::makeRecord(0, 1, 5.0, 5000)});
+    controller->onSaveBatchToSql({TestHelpers::makeRecord(
+        SensorData::DEFAULT_RECORD_ID, TestConstants::DB_SENSOR_ID_FIRST,
+        TestConstants::DB_VALUE_EXTRA, TestConstants::DB_TIMESTAMP_EXTRA)});
 
     QSignalSpy clearedSpy(controller.data(), &DBDataControll::databaseCleared);
     controller->clearDatabase();
@@ -66,7 +75,7 @@ void TestDBDataControll::clearDatabase_removesRows()
     QSignalSpy dataSpy(controller.data(), &DBDataControll::dataLoaded);
     controller->fetchSortedWindow(static_cast<int>(Telemetry::Column::Timestamp),
                                   static_cast<int>(Qt::AscendingOrder),
-                                  10);
+                                  TestConstants::DEFAULT_QUERY_LIMIT);
     QCOMPARE(dataSpy.count(), 1);
     QCOMPARE(dataSpy.at(0).at(0).value<QVector<SensorData>>().size(), 0);
 }
@@ -75,9 +84,12 @@ void TestDBDataControll::fetchSensorStatistics_aggregatesSavedBatch()
 {
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
     controller->onSaveBatchToSql({
-        TestHelpers::makeRecord(0, 1, 10.0, nowMs),
-        TestHelpers::makeRecord(0, 2, 30.0, nowMs),
-        TestHelpers::makeRecord(0, 3, 20.0, nowMs),
+        TestHelpers::makeRecord(SensorData::DEFAULT_RECORD_ID, TestConstants::DB_SENSOR_ID_FIRST,
+                                TestConstants::DB_VALUE_LOW, nowMs),
+        TestHelpers::makeRecord(SensorData::DEFAULT_RECORD_ID, TestConstants::DB_SENSOR_ID_SECOND,
+                                TestConstants::DB_VALUE_HIGH, nowMs),
+        TestHelpers::makeRecord(SensorData::DEFAULT_RECORD_ID, TestConstants::DB_SENSOR_ID_THIRD,
+                                TestConstants::DB_VALUE_MID, nowMs),
     });
 
     QSignalSpy statsSpy(controller.data(), &DBDataControll::sensorStatisticsLoaded);
@@ -85,30 +97,39 @@ void TestDBDataControll::fetchSensorStatistics_aggregatesSavedBatch()
     QCOMPARE(statsSpy.count(), 1);
 
     const SensorStatistics stats = statsSpy.at(0).at(0).value<SensorStatistics>();
-    QCOMPARE(stats.connectedCount(), 3);
-    QVERIFY(TestHelpers::nearlyEqual(stats.minimumValue(), 10.0));
-    QVERIFY(TestHelpers::nearlyEqual(stats.maximumValue(), 30.0));
-    QVERIFY(TestHelpers::nearlyEqual(stats.averageValue(), 20.0));
+    QCOMPARE(stats.connectedCount(), TestConstants::DB_EXPECTED_ROW_COUNT);
+    QVERIFY(TestHelpers::nearlyEqual(stats.minimumValue(), TestConstants::DB_VALUE_LOW));
+    QVERIFY(TestHelpers::nearlyEqual(stats.maximumValue(), TestConstants::DB_VALUE_HIGH));
+    QVERIFY(TestHelpers::nearlyEqual(stats.averageValue(), TestConstants::DB_VALUE_MID));
 }
 
 void TestDBDataControll::applyFilterQuery_timestampRange_returnsMatchingRows()
 {
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
     controller->onSaveBatchToSql({
-        TestHelpers::makeRecord(0, 1, 10.0, nowMs - 1000),
-        TestHelpers::makeRecord(0, 2, 20.0, nowMs - 2000),
-        TestHelpers::makeRecord(0, 3, 30.0, nowMs - 3600 * 1000),
+        TestHelpers::makeRecord(SensorData::DEFAULT_RECORD_ID, TestConstants::DB_SENSOR_ID_FIRST,
+                                TestConstants::DB_VALUE_LOW,
+                                nowMs - TestConstants::DB_OFFSET_ONE_SECOND_MS),
+        TestHelpers::makeRecord(SensorData::DEFAULT_RECORD_ID, TestConstants::DB_SENSOR_ID_SECOND,
+                                TestConstants::DB_VALUE_MID,
+                                nowMs - TestConstants::DB_OFFSET_TWO_SECONDS_MS),
+        TestHelpers::makeRecord(SensorData::DEFAULT_RECORD_ID, TestConstants::DB_SENSOR_ID_THIRD,
+                                TestConstants::DB_VALUE_HIGH, nowMs - Telemetry::HOUR_MS),
     });
 
-    FilterQuerySpec spec;
-    spec.setField(FilterQuerySpec::Field::Timestamp);
-    spec.setTimestampRange(nowMs - 5000, nowMs);
+    FilterViewModel vm;
+    vm.setField(FilterViewModel::Field::Timestamp);
+    vm.setTimestampRange(
+        FilterViewModel::combineLocalDateTime(QDate::currentDate(), FilterViewModel::DAY_START_TIME),
+        FilterViewModel::combineLocalDateTime(QDate::currentDate(), QTime::currentTime(), true));
+    const FilterQuerySpec spec = vm.buildQuerySpec();
 
     QSignalSpy dataSpy(controller.data(), &DBDataControll::dataLoaded);
     controller->applyFilterQuery(spec,
                                  static_cast<int>(Telemetry::Column::Timestamp),
                                  static_cast<int>(Qt::AscendingOrder),
-                                 10);
+                                 TestConstants::DEFAULT_QUERY_LIMIT);
     QCOMPARE(dataSpy.count(), 1);
-    QCOMPARE(dataSpy.at(0).at(0).value<QVector<SensorData>>().size(), 2);
+    QCOMPARE(dataSpy.at(0).at(0).value<QVector<SensorData>>().size(),
+             TestConstants::DB_EXPECTED_ROW_COUNT);
 }

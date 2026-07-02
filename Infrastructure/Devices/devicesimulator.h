@@ -1,6 +1,7 @@
 #ifndef DEVICESIMULATOR_H
 #define DEVICESIMULATOR_H
 
+#include "Domain/sensorlimits.h"
 #include <QObject>
 #include <QTimer>
 #include <QVector>
@@ -11,8 +12,13 @@
 class DeviceSimulator : public QObject {
     Q_OBJECT
 public:
-    static constexpr double MIN_VOLTAGE = 0.0;
-    static constexpr double MAX_VOLTAGE = 280.0;
+    static constexpr double MIN_VOLTAGE = SensorLimits::MIN_VOLTAGE_VOLTS;
+    static constexpr double MAX_VOLTAGE = SensorLimits::MAX_VOLTAGE_VOLTS;
+
+    static constexpr int GENERATION_BATCH_SIZE = 50;
+    static constexpr int GENERATION_INTERVAL_MS = 30;
+    static constexpr int MIN_SENSOR_ID = 1;
+    static constexpr int EXCLUSIVE_MAX_SENSOR_ID = 10001;
 
     explicit DeviceSimulator(QObject *parent = nullptr);
 

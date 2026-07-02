@@ -3,6 +3,11 @@
 
 class SensorStatistics {
 public:
+    static constexpr int DEFAULT_CONNECTED_COUNT = 0;
+    static constexpr double DEFAULT_AVERAGE_VALUE = 0.0;
+    static constexpr double DEFAULT_MINIMUM_VALUE = 0.0;
+    static constexpr double DEFAULT_MAXIMUM_VALUE = 0.0;
+
     SensorStatistics() = default;
 
     int connectedCount() const;
@@ -16,10 +21,10 @@ public:
     void setMaximumValue(double value);
 
 private:
-    int m_connectedCount = 0;
-    double m_averageValue = 0.0;
-    double m_minimumValue = 0.0;
-    double m_maximumValue = 0.0;
+    int m_connectedCount = DEFAULT_CONNECTED_COUNT;
+    double m_averageValue = DEFAULT_AVERAGE_VALUE;
+    double m_minimumValue = DEFAULT_MINIMUM_VALUE;
+    double m_maximumValue = DEFAULT_MAXIMUM_VALUE;
 };
 
 #endif // SENSORSTATISTICS_H

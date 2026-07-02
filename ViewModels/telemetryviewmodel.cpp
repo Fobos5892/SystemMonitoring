@@ -64,7 +64,7 @@ void TelemetryViewModel::beginReloading(int requestLimit)
         return;
     }
 
-    pendingRequestLimit = qMax(1, requestLimit);
+    pendingRequestLimit = qMax(Telemetry::MIN_REQUEST_LIMIT, requestLimit);
     reloading = true;
     bufferLoading = true;
 

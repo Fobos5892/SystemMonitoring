@@ -66,11 +66,17 @@ void DbTelemetryRepository::fetchRangeNearAnchor(int sortColumn, int sortOrder,
 void DbTelemetryRepository::applyFilterQuery(const FilterQuerySpec &filterSpec, int sortColumn,
                                              int sortOrder, int limit)
 {
-    QMetaObject::invokeMethod(dataController.data(), "applyFilterQuery", Qt::QueuedConnection,
+    QMetaObject::invokeMethod(this, "runFilterQuery", Qt::QueuedConnection,
                               Q_ARG(FilterQuerySpec, filterSpec),
                               Q_ARG(int, sortColumn),
                               Q_ARG(int, sortOrder),
                               Q_ARG(int, limit));
+}
+
+void DbTelemetryRepository::runFilterQuery(FilterQuerySpec filterSpec, int sortColumn,
+                                           int sortOrder, int limit)
+{
+    dataController->applyFilterQuery(filterSpec, sortColumn, sortOrder, limit);
 }
 
 void DbTelemetryRepository::clearDatabase()

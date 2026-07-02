@@ -14,7 +14,8 @@ class DatabaseConnectionManager;
 class DBDataControll : public QObject {
     Q_OBJECT
 public:
-    static constexpr int SENSOR_ACTIVITY_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+    static constexpr int SENSOR_ACTIVITY_WINDOW_MS =
+        Telemetry::SENSOR_ACTIVITY_WINDOW_MINUTES * Telemetry::MS_PER_MINUTE;
 
     DBDataControll() = delete;
     DBDataControll(const DBDataControll& value) = delete;

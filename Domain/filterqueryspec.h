@@ -1,25 +1,38 @@
 #ifndef FILTERQUERYSPEC_H
 #define FILTERQUERYSPEC_H
 
+#include "Domain/filterlimits.h"
 #include <QMetaType>
 #include <QString>
 #include <QtGlobal>
 
 class FilterQuerySpec {
+    Q_GADGET
+
 public:
     enum class Field : int {
         SensorId = 0,
         Value,
         Timestamp
     };
+    Q_ENUM(Field)
 
     enum class ValueOperation : int {
         Near = 0,
         Greater,
         Less
     };
+    Q_ENUM(ValueOperation)
 
     FilterQuerySpec() = default;
+
+    static constexpr int DEFAULT_SENSOR_ID = 0;
+    static constexpr double DEFAULT_VALUE = 0.0;
+    static constexpr double DEFAULT_TOLERANCE = 0.0;
+    static constexpr qint64 DEFAULT_TIMESTAMP_MS = 0;
+
+    static constexpr int SENSOR_VALUE_DECIMAL_PLACES = FilterLimits::SENSOR_VALUE_DECIMAL_PLACES;
+    static constexpr int TOLERANCE_DECIMAL_PLACES = FilterLimits::TOLERANCE_DECIMAL_PLACES;
 
     Field field() const;
     int sensorId() const;
@@ -40,12 +53,12 @@ public:
 
 private:
     Field m_field = Field::SensorId;
-    int m_sensorId = 0;
-    double m_value = 0.0;
-    double m_tolerance = 0.0;
+    int m_sensorId = DEFAULT_SENSOR_ID;
+    double m_value = DEFAULT_VALUE;
+    double m_tolerance = DEFAULT_TOLERANCE;
     ValueOperation m_valueOperation = ValueOperation::Near;
-    qint64 m_fromTimestampMs = 0;
-    qint64 m_toTimestampMs = 0;
+    qint64 m_fromTimestampMs = DEFAULT_TIMESTAMP_MS;
+    qint64 m_toTimestampMs = DEFAULT_TIMESTAMP_MS;
 };
 
 Q_DECLARE_METATYPE(FilterQuerySpec)

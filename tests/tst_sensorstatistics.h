@@ -9,8 +9,6 @@ class TestSensorStatistics : public QObject {
 private slots:
     void gettersReturnDefaults();
     void settersUpdateValues();
-    void setConnectedCount_skipsDuplicate();
-    void setDoubleFields_skipsNearDuplicate();
 };
 
 #endif // TST_SENSORSTATISTICS_H
