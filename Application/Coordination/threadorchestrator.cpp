@@ -14,11 +14,6 @@ ThreadOrchestrator::ThreadOrchestrator(TelemetryViewModel *viewModel, QObject *p
     , repositoryAdapter(new DbTelemetryRepository(new DBDataControll("telemetry.db")))
 {
     repository = repositoryAdapter.data();
-
-    filterRefreshTimer.setSingleShot(true);
-    filterRefreshTimer.setInterval(FILTER_REFRESH_DEBOUNCE_MS);
-    connect(&filterRefreshTimer, &QTimer::timeout,
-            this, &ThreadOrchestrator::onDebouncedFilterRefresh);
     initThreads();
     setupConnections();
 }
@@ -45,6 +40,10 @@ void ThreadOrchestrator::setupSensorConnections() {
             receiver.data(), &DeviceReceiver::onRawDataReceived,
             Qt::QueuedConnection);
 
+    connect(simulator.data(), &DeviceSimulator::connectionStatusChanged,
+            this, &ThreadOrchestrator::connectionStatusChanged,
+            Qt::QueuedConnection);
+
     connect(receiver.data(), &DeviceReceiver::dataBatchReady,
             repositoryAdapter.data(), &DbTelemetryRepository::saveBatch,
             Qt::QueuedConnection);
@@ -53,9 +52,6 @@ void ThreadOrchestrator::setupSensorConnections() {
 void ThreadOrchestrator::setupRepositoryOutputConnections() {
     connect(repository, &ITelemetryRepository::batchCommitted,
             viewModel, &TelemetryViewModel::onBatchCommitted,
-            Qt::QueuedConnection);
-    connect(repository, &ITelemetryRepository::batchCommitted,
-            this, &ThreadOrchestrator::onBatchCommittedFromDb,
             Qt::QueuedConnection);
 
     connect(repository, &ITelemetryRepository::dataLoaded,
@@ -127,6 +123,7 @@ void ThreadOrchestrator::onStopGenerationRequested() {
 }
 
 void ThreadOrchestrator::onClearDatabaseRequested() {
+    viewModel->beginReloading(Telemetry::MIN_REQUEST_LIMIT);
     repository->clearDatabase();
 }
 
@@ -137,44 +134,30 @@ void ThreadOrchestrator::onFilterRequested(const FilterQuerySpec &filterSpec,
     currentSortOrder = sortOrder;
     this->filterSpec = filterSpec;
     filterLimit = qMax(limit, Telemetry::CHUNK_SIZE);
-    filterRefreshTimer.stop();
+    viewModel->setActiveFilterSpec(filterSpec);
     viewModel->beginReloading(filterLimit);
     repository->applyFilterQuery(filterSpec, currentSortColumn, currentSortOrder, filterLimit);
 }
 
-void ThreadOrchestrator::onBatchCommittedFromDb() {
-    if (!filterActive) {
-        return;
-    }
-    if (viewModel->isReloading() || !viewModel->isFilterMode()) {
-        return;
-    }
-
-    filterRefreshTimer.start();
-}
-
-void ThreadOrchestrator::onDebouncedFilterRefresh() {
-    if (!filterActive || viewModel->isReloading()) {
-        return;
-    }
-
-    repository->applyFilterQuery(filterSpec, currentSortColumn, currentSortOrder, filterLimit);
+void ThreadOrchestrator::onFilterResetRequested(int sortColumn, int sortOrder) {
+    filterActive = false;
+    currentSortColumn = sortColumn;
+    currentSortOrder = sortOrder;
+    viewModel->clearActiveFilterSpec();
+    viewModel->beginReloading(Telemetry::WINDOW_SIZE);
+    repository->fetchSortedWindow(sortColumn, sortOrder, Telemetry::WINDOW_SIZE);
 }
 
 void ThreadOrchestrator::onSortRequested(int column, int sortOrder) {
     currentSortColumn = column;
     currentSortOrder = sortOrder;
     if (filterActive) {
-        filterRefreshTimer.stop();
-        if (!viewModel->isReloading()) {
-            viewModel->beginReloading(filterLimit);
-        }
         repository->applyFilterQuery(filterSpec, column, sortOrder, filterLimit);
         return;
     }
 
     filterActive = false;
-    filterRefreshTimer.stop();
+    viewModel->clearActiveFilterSpec();
     repository->fetchSortedWindow(column, sortOrder, Telemetry::WINDOW_SIZE);
 }
 

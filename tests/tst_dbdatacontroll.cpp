@@ -133,3 +133,17 @@ void TestDBDataControll::applyFilterQuery_timestampRange_returnsMatchingRows()
     QCOMPARE(dataSpy.at(0).at(0).value<QVector<SensorData>>().size(),
              TestConstants::DB_EXPECTED_ROW_COUNT);
 }
+
+void TestDBDataControll::onSaveBatchToSql_emitsBatchCommittedWithRecordIds()
+{
+    QSignalSpy batchSpy(controller.data(), &DBDataControll::batchCommitted);
+    controller->onSaveBatchToSql({TestHelpers::makeRecord(
+        SensorData::DEFAULT_RECORD_ID, TestConstants::DB_SENSOR_ID_FIRST,
+        TestConstants::DB_VALUE_LOW, TestConstants::DB_TIMESTAMP_FIRST)});
+
+    QCOMPARE(batchSpy.count(), 1);
+    const QVector<SensorData> inserted = batchSpy.at(0).at(0).value<QVector<SensorData>>();
+    QCOMPARE(inserted.size(), 1);
+    QVERIFY(inserted.first().recordId > SensorData::DEFAULT_RECORD_ID);
+    QCOMPARE(inserted.first().sensorId, static_cast<uint64_t>(TestConstants::DB_SENSOR_ID_FIRST));
+}

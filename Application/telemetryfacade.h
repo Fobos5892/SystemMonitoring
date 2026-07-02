@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QScopedPointer>
 #include "Domain/filterqueryspec.h"
+#include "Domain/telemetrytypes.h"
 
 class FilterViewModel;
 class StatisticsViewModel;
@@ -28,6 +29,10 @@ public:
     void stopGeneration();
     void clearDatabase();
     void applyFilter(const FilterQuerySpec &filterSpec, int sortColumn, int sortOrder, int limit);
+    void resetFilter(int sortColumn, int sortOrder);
+
+signals:
+    void connectionStatusChanged(Telemetry::ConnectionStatus status);
 
 private:
     QScopedPointer<TelemetryViewModel> telemetryViewModelInstance;

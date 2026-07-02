@@ -6,7 +6,6 @@
 #include <QThread>
 #include <QScopedPointer>
 #include <QString>
-#include <QTimer>
 #include "Domain/filterqueryspec.h"
 #include "Domain/sensorstatistics.h"
 #include "Domain/telemetrytypes.h"
@@ -28,22 +27,20 @@ public:
 
 signals:
     void sensorStatisticsUpdated(const SensorStatistics &stats);
+    void connectionStatusChanged(Telemetry::ConnectionStatus status);
 
 public slots:
     void onConnectRequested();
     void onStopGenerationRequested();
     void onClearDatabaseRequested();
     void onFilterRequested(const FilterQuerySpec &filterSpec, int sortColumn, int sortOrder, int limit);
-    void onBatchCommittedFromDb();
-    void onDebouncedFilterRefresh();
+    void onFilterResetRequested(int sortColumn, int sortOrder);
     void onSortRequested(int column, int sortOrder);
     void onTailRequest(int sortColumn, int sortOrder, int limit);
     void onRangeNearAnchorRequested(int sortColumn, int sortOrder, quint64 anchorRecordId,
                                     int limit, Telemetry::AnchorSide side);
 
 private:
-    static constexpr int FILTER_REFRESH_DEBOUNCE_MS = 300;
-
     void initThreads();
     void setupConnections();
     void setupSensorConnections();
@@ -66,6 +63,5 @@ private:
     int currentSortOrder = static_cast<int>(Qt::AscendingOrder);
     int filterLimit = Telemetry::WINDOW_SIZE;
     FilterQuerySpec filterSpec;
-    QTimer filterRefreshTimer;
 };
 #endif // THREADORCHESTRATOR_H

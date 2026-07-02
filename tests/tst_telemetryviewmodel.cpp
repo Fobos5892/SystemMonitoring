@@ -98,3 +98,74 @@ void TestTelemetryViewModel::onDatabaseCleared_resetsState()
     QVERIFY(!vm.isReloading());
     QCOMPARE(finishedSpy.count(), 1);
 }
+
+namespace {
+
+FilterQuerySpec sensorFilter(int sensorId)
+{
+    FilterQuerySpec spec;
+    spec.setSensorId(sensorId);
+    return spec;
+}
+
+void loadFilterWindow(TelemetryViewModel &vm, const QVector<SensorData> &chunk)
+{
+    vm.setFilterMode(true);
+    vm.setLiveUpdatesEnabled(false);
+    vm.setActiveFilterSpec(sensorFilter(TestConstants::SAMPLE_SENSOR_ID));
+    vm.setViewportZone(Telemetry::ViewportZone::BottomEdge);
+    vm.beginReloading(TestConstants::DEFAULT_QUERY_LIMIT);
+    vm.onDataLoaded(chunk);
+}
+
+} // namespace
+
+void TestTelemetryViewModel::onBatchCommitted_inFilterMode_mergesWhenScrollIdle()
+{
+    TelemetryViewModel vm;
+    loadFilterWindow(vm, {
+        TestHelpers::makeRecord(1, TestConstants::SAMPLE_SENSOR_ID, 10.0, 100),
+        TestHelpers::makeRecord(2, TestConstants::SAMPLE_SENSOR_ID, 20.0, 200),
+    });
+    vm.setScrollIdle(true);
+
+    QSignalSpy liveSpy(&vm, &TelemetryViewModel::liveDataInserted);
+    vm.onBatchCommitted({TestHelpers::makeRecord(3, TestConstants::SAMPLE_SENSOR_ID, 30.0, 300)});
+
+    QCOMPARE(vm.recordCount(), 3);
+    QCOMPARE(vm.recordAt(2).recordId, static_cast<quint64>(3));
+    QCOMPARE(liveSpy.count(), 1);
+}
+
+void TestTelemetryViewModel::onBatchCommitted_inFilterMode_skipsWhenScrolling()
+{
+    TelemetryViewModel vm;
+    loadFilterWindow(vm, {
+        TestHelpers::makeRecord(1, TestConstants::SAMPLE_SENSOR_ID, 10.0, 100),
+        TestHelpers::makeRecord(2, TestConstants::SAMPLE_SENSOR_ID, 20.0, 200),
+    });
+    vm.setScrollIdle(false);
+
+    QSignalSpy liveSpy(&vm, &TelemetryViewModel::liveDataInserted);
+    vm.onBatchCommitted({TestHelpers::makeRecord(3, TestConstants::SAMPLE_SENSOR_ID, 30.0, 300)});
+
+    QCOMPARE(vm.recordCount(), 2);
+    QCOMPARE(liveSpy.count(), 0);
+}
+
+void TestTelemetryViewModel::onBatchCommitted_inFilterMode_emitsMergeSignals()
+{
+    TelemetryViewModel vm;
+    loadFilterWindow(vm, {
+        TestHelpers::makeRecord(1, TestConstants::SAMPLE_SENSOR_ID, 10.0, 100),
+    });
+    vm.setScrollIdle(true);
+
+    QSignalSpy mergeStartSpy(&vm, &TelemetryViewModel::mergeStarted);
+    QSignalSpy mergeFinishSpy(&vm, &TelemetryViewModel::mergeFinished);
+
+    vm.onBatchCommitted({TestHelpers::makeRecord(2, TestConstants::SAMPLE_SENSOR_ID, 20.0, 200)});
+
+    QCOMPARE(mergeStartSpy.count(), 1);
+    QCOMPARE(mergeFinishSpy.count(), 1);
+}

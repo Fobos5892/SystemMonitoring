@@ -1,6 +1,7 @@
 #ifndef TELEMETRYVIEWMODEL_H
 #define TELEMETRYVIEWMODEL_H
 
+#include "Domain/filterqueryspec.h"
 #include "Domain/sensordata.h"
 #include "Domain/telemetrytypes.h"
 #include <QObject>
@@ -25,9 +26,14 @@ public:
     void setFollowLiveTail(bool follow);
     void setLiveUpdatesEnabled(bool enabled);
     void setFilterMode(bool enabled);
+    void setActiveFilterSpec(const FilterQuerySpec &filterSpec);
+    void clearActiveFilterSpec();
+    void setScrollIdle(bool idle);
+    void setViewportZone(Telemetry::ViewportZone zone);
     bool isFilterMode() const { return filterMode; }
     bool isFollowingLiveTail() const { return followLiveTail; }
     bool isReloading() const { return reloading; }
+    bool isScrollIdle() const { return scrollIdle; }
     bool isLiveTailView() const;
 
     void handleRowAccessed(int row);
@@ -36,6 +42,8 @@ signals:
     void liveDataInserted();
     void loadingStarted();
     void loadingFinished();
+    void mergeStarted();
+    void mergeFinished();
     void sortRequested(int column, int sortOrder);
     void tailRequest(int sortColumn, int sortOrder, int limit);
     void rangeNearAnchorRequested(int sortColumn, int sortOrder, quint64 anchorRecordId,
@@ -44,7 +52,7 @@ signals:
 public slots:
     void requestSort(int column, Qt::SortOrder order);
     void beginReloading(int requestLimit = Telemetry::WINDOW_SIZE);
-    void onBatchCommitted();
+    void onBatchCommitted(const QVector<SensorData> &inserted);
     void onDataLoaded(const QVector<SensorData> &chunk);
     void onTailDataLoaded(const QVector<SensorData> &chunk);
     void onRangeNearAnchorLoaded(const QVector<SensorData> &chunk, Telemetry::AnchorSide side);
@@ -58,6 +66,7 @@ private:
 
     void finishReloading(const QVector<SensorData> &chunk);
     void requestLiveRefresh();
+    void mergeFilterInsertions(const QVector<SensorData> &inserted);
     void applyIncrementalDataUpdate(const QVector<SensorData> &chunk);
     void clearRecordsOnEmptyUpdate();
     void populateInitialChunk(const QVector<SensorData> &chunk);
@@ -81,6 +90,11 @@ private:
     bool liveUpdatesEnabled = true;
     bool filterMode = false;
     bool reloading = false;
+    bool scrollIdle = true;
+    bool hasActiveFilterSpec = false;
+
+    FilterQuerySpec activeFilterSpec;
+    Telemetry::ViewportZone viewportZone = Telemetry::ViewportZone::Middle;
 
     int currentSortColumn = static_cast<int>(Telemetry::Column::Timestamp);
     Qt::SortOrder currentSortOrder = Qt::AscendingOrder;

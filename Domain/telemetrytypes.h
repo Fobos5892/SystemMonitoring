@@ -13,6 +13,19 @@ enum class AnchorSide {
 };
 Q_ENUM_NS(AnchorSide)
 
+enum class ConnectionStatus {
+    Started,
+    Stopped
+};
+Q_ENUM_NS(ConnectionStatus)
+
+enum class ViewportZone {
+    TopEdge,
+    Middle,
+    BottomEdge
+};
+Q_ENUM_NS(ViewportZone)
+
 enum class Column : int {
     RecordId = 0,
     SensorId,

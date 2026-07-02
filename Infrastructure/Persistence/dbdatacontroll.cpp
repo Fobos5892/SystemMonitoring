@@ -188,8 +188,13 @@ SensorData DBDataControll::readRow(const QSqlQuery &query) {
 }
 
 void DBDataControll::saveBatch(const QVector<SensorData> &batch) {
+  saveBatchAndReturnInserted(batch);
+}
+
+QVector<SensorData> DBDataControll::saveBatchAndReturnInserted(const QVector<SensorData> &batch) {
+    QVector<SensorData> inserted;
     if (batch.isEmpty() || !m_dbInitialized) {
-        return;
+        return inserted;
     }
 
     QSqlDatabase db = QSqlDatabase::database(QLatin1String(DbConnection::SQL_WORKER_CONNECTION_NAME));
@@ -198,13 +203,22 @@ void DBDataControll::saveBatch(const QVector<SensorData> &batch) {
     QSqlQuery query(db);
     query.prepare("INSERT INTO telemetry (sensor_id, value, timestamp) VALUES (:sid, :val, :ts)");
 
+    inserted.reserve(batch.size());
     for (const auto &record : batch) {
         query.bindValue(":sid", record.sensorId);
         query.bindValue(":val", record.value);
         query.bindValue(":ts", record.timestamp);
-        query.exec();
+        if (!query.exec()) {
+            qCritical() << "Ошибка вставки в SQL:" << query.lastError().text();
+            continue;
+        }
+
+        SensorData saved = record;
+        saved.recordId = query.lastInsertId().toULongLong();
+        inserted.append(saved);
     }
     db.commit();
+    return inserted;
 }
 
 void DBDataControll::onSaveBatchToSql(const QVector<SensorData> &batch) {
@@ -212,8 +226,12 @@ void DBDataControll::onSaveBatchToSql(const QVector<SensorData> &batch) {
         return;
     }
 
-    saveBatch(batch);
-    emit batchCommitted();
+    const QVector<SensorData> inserted = saveBatchAndReturnInserted(batch);
+    if (inserted.isEmpty()) {
+        return;
+    }
+
+    emit batchCommitted(inserted);
     emit sensorStatisticsLoaded(loadSensorStatistics());
 }
 

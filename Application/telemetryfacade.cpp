@@ -14,6 +14,8 @@ TelemetryFacade::TelemetryFacade(QObject *parent)
 {
     connect(orchestrator.data(), &ThreadOrchestrator::sensorStatisticsUpdated,
             statisticsViewModelInstance.data(), &StatisticsViewModel::updateStatistics);
+    connect(orchestrator.data(), &ThreadOrchestrator::connectionStatusChanged,
+            this, &TelemetryFacade::connectionStatusChanged);
 }
 
 TelemetryFacade::~TelemetryFacade() = default;
@@ -62,4 +64,9 @@ void TelemetryFacade::applyFilter(const FilterQuerySpec &filterSpec, int sortCol
                                   int sortOrder, int limit)
 {
     orchestrator->onFilterRequested(filterSpec, sortColumn, sortOrder, limit);
+}
+
+void TelemetryFacade::resetFilter(int sortColumn, int sortOrder)
+{
+    orchestrator->onFilterResetRequested(sortColumn, sortOrder);
 }

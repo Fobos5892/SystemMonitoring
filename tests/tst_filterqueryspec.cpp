@@ -114,3 +114,52 @@ void TestFilterQuerySpec::toSqlCondition_timestamp()
                  .arg(TestConstants::TIMESTAMP_RANGE_FROM_MS)
                  .arg(TestConstants::TIMESTAMP_RANGE_TO_MS));
 }
+
+void TestFilterQuerySpec::matches_sensorId()
+{
+    FilterQuerySpec spec;
+    spec.setSensorId(TestConstants::SAMPLE_SENSOR_ID);
+
+    const SensorData match = TestHelpers::makeRecord(1, TestConstants::SAMPLE_SENSOR_ID);
+    const SensorData mismatch = TestHelpers::makeRecord(2, TestConstants::OTHER_SENSOR_ID);
+
+    QVERIFY(spec.matches(match));
+    QVERIFY(!spec.matches(mismatch));
+}
+
+void TestFilterQuerySpec::matches_valueNear()
+{
+    FilterQuerySpec spec;
+    spec.setField(FilterQuerySpec::Field::Value);
+    spec.setValue(TestConstants::NEAR_FILTER_VALUE);
+    spec.setTolerance(TestConstants::NEAR_FILTER_TOLERANCE);
+    spec.setValueOperation(FilterQuerySpec::ValueOperation::Near);
+
+    const SensorData inside = TestHelpers::makeRecord(
+        1, TestConstants::DEFAULT_SENSOR_ID,
+        TestConstants::NEAR_FILTER_VALUE + TestConstants::NEAR_FILTER_TOLERANCE);
+    const SensorData outside = TestHelpers::makeRecord(
+        2, TestConstants::DEFAULT_SENSOR_ID,
+        TestConstants::NEAR_FILTER_VALUE + TestConstants::NEAR_FILTER_TOLERANCE + 1.0);
+
+    QVERIFY(spec.matches(inside));
+    QVERIFY(!spec.matches(outside));
+}
+
+void TestFilterQuerySpec::matches_timestampRange()
+{
+    FilterQuerySpec spec;
+    spec.setField(FilterQuerySpec::Field::Timestamp);
+    spec.setTimestampRange(TestConstants::TIMESTAMP_RANGE_FROM_MS,
+                           TestConstants::TIMESTAMP_RANGE_TO_MS);
+
+    const SensorData inside = TestHelpers::makeRecord(
+        1, TestConstants::DEFAULT_SENSOR_ID, TestConstants::DEFAULT_SENSOR_VALUE,
+        static_cast<uint64_t>(TestConstants::TIMESTAMP_RANGE_FROM_MS + 1));
+    const SensorData outside = TestHelpers::makeRecord(
+        2, TestConstants::DEFAULT_SENSOR_ID, TestConstants::DEFAULT_SENSOR_VALUE,
+        static_cast<uint64_t>(TestConstants::TIMESTAMP_RANGE_TO_MS + 1));
+
+    QVERIFY(spec.matches(inside));
+    QVERIFY(!spec.matches(outside));
+}

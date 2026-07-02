@@ -11,10 +11,15 @@ ROOT = ..
 INCLUDEPATH += $$ROOT
 
 SOURCES += \
+    $$ROOT/Application/Coordination/threadorchestrator.cpp \
     $$ROOT/Domain/sensorstatistics.cpp \
     $$ROOT/Domain/filterqueryspec.cpp \
+    $$ROOT/Domain/telemetrymergelogic.cpp \
+    $$ROOT/Infrastructure/Devices/devicereceiver.cpp \
+    $$ROOT/Infrastructure/Devices/devicesimulator.cpp \
     $$ROOT/Infrastructure/Persistence/dbconnect.cpp \
     $$ROOT/Infrastructure/Persistence/dbdatacontroll.cpp \
+    $$ROOT/Infrastructure/Persistence/dbtelemetryrepository.cpp \
     $$ROOT/ViewModels/filterviewmodel.cpp \
     $$ROOT/ViewModels/statisticsviewmodel.cpp \
     $$ROOT/ViewModels/telemetrytablemodel.cpp \
@@ -25,6 +30,9 @@ SOURCES += \
     tst_filterviewmodel.cpp \
     tst_statisticsviewmodel.cpp \
     tst_telemetryviewmodel.cpp \
+    tst_devicesimulator.cpp \
+    tst_threadorchestrator.cpp \
+    tst_telemetrymergelogic.cpp \
     tst_dbdatacontroll.cpp
 
 HEADERS += \
@@ -33,18 +41,26 @@ HEADERS += \
     tst_filterviewmodel.h \
     tst_statisticsviewmodel.h \
     tst_telemetryviewmodel.h \
+    tst_devicesimulator.h \
+    tst_threadorchestrator.h \
+    tst_telemetrymergelogic.h \
     tst_dbdatacontroll.h \
+    $$ROOT/Application/Coordination/threadorchestrator.h \
+    $$ROOT/Application/Contracts/itelemetryrepository.h \
     $$ROOT/Domain/telemetrytypes.h \
     $$ROOT/Domain/datetimeformats.h \
     $$ROOT/Domain/filterlimits.h \
     $$ROOT/Domain/sensorlimits.h \
     $$ROOT/Domain/filterqueryspec.h \
+    $$ROOT/Domain/telemetrymergelogic.h \
     $$ROOT/ViewModels/filterviewmodel.h \
     $$ROOT/ViewModels/statisticsviewmodel.h \
     $$ROOT/ViewModels/telemetrytablemodel.h \
     $$ROOT/ViewModels/telemetryviewmodel.h \
     $$ROOT/Infrastructure/Persistence/dbconnect.h \
-    $$ROOT/Infrastructure/Persistence/dbdatacontroll.h
-
+    $$ROOT/Infrastructure/Persistence/dbdatacontroll.h \
+    $$ROOT/Infrastructure/Persistence/dbtelemetryrepository.h \
+    $$ROOT/Infrastructure/Devices/devicesimulator.h \
+    $$ROOT/Infrastructure/Devices/devicereceiver.h
 # Сборка: открыть tests/tests.pro в Qt Creator или:
 #   cd tests && qmake && mingw32-make && release/SystemMonitoringTests.exe

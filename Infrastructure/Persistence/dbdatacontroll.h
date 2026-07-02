@@ -44,12 +44,13 @@ signals:
     void tailDataLoaded(const QVector<SensorData> &chunk);
     void rangeNearAnchorLoaded(const QVector<SensorData> &chunk, Telemetry::AnchorSide side);
     void sensorStatisticsLoaded(const SensorStatistics &stats);
-    void batchCommitted();
+    void batchCommitted(const QVector<SensorData> &inserted);
     void databaseCleared();
 
 private:
     bool ensureSchema();
     void saveBatch(const QVector<SensorData> &batch);
+    QVector<SensorData> saveBatchAndReturnInserted(const QVector<SensorData> &batch);
     static QString sortColumnSql(int sortColumn);
     static SensorData readRow(const QSqlQuery &query);
     SensorStatistics loadSensorStatistics() const;

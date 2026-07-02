@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>assets/app-icon.svg</file>
+        <file>assets/filter-reset.svg</file>
     </qresource>
 </RCC>

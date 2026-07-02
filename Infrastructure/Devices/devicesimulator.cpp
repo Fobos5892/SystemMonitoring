@@ -9,12 +9,18 @@ DeviceSimulator::DeviceSimulator(QObject *parent)
 
 void DeviceSimulator::startGeneration()
 {
+    if (m_timer.isActive()) {
+        return;
+    }
+
     m_timer.start(GENERATION_INTERVAL_MS);
+    emit connectionStatusChanged(Telemetry::ConnectionStatus::Started);
 }
 
 void DeviceSimulator::stopGeneration()
 {
     m_timer.stop();
+    emit connectionStatusChanged(Telemetry::ConnectionStatus::Stopped);
 }
 
 void DeviceSimulator::generateDataTick()

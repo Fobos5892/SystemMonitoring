@@ -2,6 +2,7 @@
 #define FILTERQUERYSPEC_H
 
 #include "Domain/filterlimits.h"
+#include "Domain/sensordata.h"
 #include <QMetaType>
 #include <QString>
 #include <QtGlobal>
@@ -49,6 +50,7 @@ public:
     void setValueOperation(ValueOperation operation);
     void setTimestampRange(qint64 fromMs, qint64 toMs);
 
+    bool matches(const SensorData &record) const;
     QString toSqlCondition(const QString &tableAlias = QString()) const;
 
 private:

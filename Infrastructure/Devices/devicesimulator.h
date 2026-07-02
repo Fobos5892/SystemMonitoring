@@ -2,6 +2,7 @@
 #define DEVICESIMULATOR_H
 
 #include "Domain/sensorlimits.h"
+#include "Domain/telemetrytypes.h"
 #include <QObject>
 #include <QTimer>
 #include <QVector>
@@ -25,6 +26,7 @@ public:
 signals:
     // Сигнал передает сгенерированную пачку данных в ресивер
     void rawDataGenerated(const QVector<SensorData> &rawBatch);
+    void connectionStatusChanged(Telemetry::ConnectionStatus status);
 
 public slots:
     void startGeneration();

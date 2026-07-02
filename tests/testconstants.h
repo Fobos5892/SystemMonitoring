@@ -83,6 +83,9 @@ inline constexpr quint64 TELEMETRY_RECORD_THIRD = 3;
 inline constexpr quint64 TELEMETRY_RECORD_TEN = 10;
 inline constexpr quint64 TELEMETRY_RECORD_ELEVEN = 11;
 
+inline constexpr int DEVICE_SIMULATOR_WAIT_MS = 500;
+inline constexpr int ORCHESTRATOR_SIGNAL_WAIT_MS = 2000;
+
 } // namespace TestConstants
 
 #endif // TESTCONSTANTS_H

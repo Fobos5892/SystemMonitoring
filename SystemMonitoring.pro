@@ -11,6 +11,7 @@ SOURCES += \
     Application/telemetryfacade.cpp \
     Domain/sensorstatistics.cpp \
     Domain/filterqueryspec.cpp \
+    Domain/telemetrymergelogic.cpp \
     Infrastructure/Devices/devicereceiver.cpp \
     Infrastructure/Devices/devicesimulator.cpp \
     Infrastructure/Persistence/dbconnect.cpp \
@@ -34,6 +35,7 @@ HEADERS += \
     Domain/sensordata.h \
     Domain/sensorstatistics.h \
     Domain/filterqueryspec.h \
+    Domain/telemetrymergelogic.h \
     Domain/telemetrytypes.h \
     Infrastructure/Devices/devicereceiver.h \
     Infrastructure/Devices/devicesimulator.h \

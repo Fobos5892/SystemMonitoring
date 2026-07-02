@@ -1,5 +1,6 @@
 #include "telemetryviewmodel.h"
 #include "telemetrytablemodel.h"
+#include "Domain/telemetrymergelogic.h"
 
 TelemetryViewModel::TelemetryViewModel(QObject *parent)
     : QObject(parent)
@@ -36,7 +37,31 @@ void TelemetryViewModel::setFilterMode(bool enabled)
     filterMode = enabled;
     if (enabled) {
         followLiveTail = false;
+    } else {
+        clearActiveFilterSpec();
     }
+}
+
+void TelemetryViewModel::setActiveFilterSpec(const FilterQuerySpec &filterSpec)
+{
+    activeFilterSpec = filterSpec;
+    hasActiveFilterSpec = true;
+}
+
+void TelemetryViewModel::clearActiveFilterSpec()
+{
+    activeFilterSpec = FilterQuerySpec();
+    hasActiveFilterSpec = false;
+}
+
+void TelemetryViewModel::setScrollIdle(bool idle)
+{
+    scrollIdle = idle;
+}
+
+void TelemetryViewModel::setViewportZone(Telemetry::ViewportZone zone)
+{
+    viewportZone = zone;
 }
 
 bool TelemetryViewModel::isLiveTailView() const
@@ -88,7 +113,9 @@ void TelemetryViewModel::requestSort(int column, Qt::SortOrder order)
     currentSortColumn = column;
     currentSortOrder = order;
 
-    beginReloading();
+    const int requestLimit =
+        filterMode ? pendingRequestLimit : Telemetry::WINDOW_SIZE;
+    beginReloading(requestLimit);
     emit sortRequested(column, static_cast<int>(order));
 }
 
@@ -138,12 +165,47 @@ void TelemetryViewModel::requestLiveRefresh()
     }
 }
 
-void TelemetryViewModel::onBatchCommitted()
+void TelemetryViewModel::onBatchCommitted(const QVector<SensorData> &inserted)
 {
+    if (reloading || inserted.isEmpty()) {
+        return;
+    }
+
+    if (filterMode && hasActiveFilterSpec) {
+        mergeFilterInsertions(inserted);
+        return;
+    }
+
     if (!liveUpdatesEnabled) {
         return;
     }
     requestLiveRefresh();
+}
+
+void TelemetryViewModel::mergeFilterInsertions(const QVector<SensorData> &inserted)
+{
+    if (!scrollIdle || records.isEmpty()) {
+        return;
+    }
+
+    emit mergeStarted();
+
+    const TelemetryMerge::MergeOutcome outcome = TelemetryMerge::mergeFilteredInsertions(
+        records,
+        inserted,
+        activeFilterSpec,
+        currentSortColumn,
+        currentSortOrder,
+        pendingRequestLimit,
+        scrollIdle,
+        viewportZone);
+
+    if (outcome.changed) {
+        table->notifyFullReset();
+        emit liveDataInserted();
+    }
+
+    emit mergeFinished();
 }
 
 void TelemetryViewModel::onDataLoaded(const QVector<SensorData> &chunk)
@@ -396,6 +458,11 @@ void TelemetryViewModel::slideWindow(int count, SlideDirection direction)
 
 void TelemetryViewModel::onDatabaseCleared()
 {
+    if (reloading) {
+        finishReloading({});
+        return;
+    }
+
     records.clear();
     reachedTop = false;
     reachedBottom = false;

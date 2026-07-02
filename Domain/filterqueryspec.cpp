@@ -1,6 +1,17 @@
 #include "filterqueryspec.h"
 
 #include <QtGlobal>
+#include <cmath>
+
+namespace {
+
+double truncateTo(double value, int decimals)
+{
+    const double scale = std::pow(10.0, decimals);
+    return std::floor(value * scale) / scale;
+}
+
+} // namespace
 
 FilterQuerySpec::Field FilterQuerySpec::field() const
 {
@@ -66,6 +77,36 @@ void FilterQuerySpec::setTimestampRange(qint64 fromMs, qint64 toMs)
 {
     m_fromTimestampMs = qMin(fromMs, toMs);
     m_toTimestampMs = qMax(fromMs, toMs);
+}
+
+bool FilterQuerySpec::matches(const SensorData &record) const
+{
+    switch (m_field) {
+    case Field::SensorId:
+        return static_cast<int>(record.sensorId) == m_sensorId;
+    case Field::Value: {
+        const double normalizedValue =
+            truncateTo(record.value, SENSOR_VALUE_DECIMAL_PLACES);
+        const double normalizedTolerance =
+            truncateTo(m_tolerance, TOLERANCE_DECIMAL_PLACES);
+        const double normalizedTarget = truncateTo(m_value, SENSOR_VALUE_DECIMAL_PLACES);
+
+        switch (m_valueOperation) {
+        case ValueOperation::Near:
+            return std::abs(normalizedValue - normalizedTarget) <= normalizedTolerance;
+        case ValueOperation::Greater:
+            return normalizedValue
+                > truncateTo(m_value + m_tolerance, SENSOR_VALUE_DECIMAL_PLACES);
+        case ValueOperation::Less:
+            return normalizedValue
+                < truncateTo(m_value - m_tolerance, SENSOR_VALUE_DECIMAL_PLACES);
+        }
+        return false;
+    }
+    case Field::Timestamp:
+        return record.timestamp >= m_fromTimestampMs && record.timestamp <= m_toTimestampMs;
+    }
+    return false;
 }
 
 QString FilterQuerySpec::toSqlCondition(const QString &tableAlias) const

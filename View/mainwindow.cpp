@@ -8,15 +8,41 @@
 #include "ViewModels/telemetryviewmodel.h"
 #include <QDateTime>
 #include <QHeaderView>
+#include <QIcon>
 #include <QSignalBlocker>
 #include <QScrollBar>
 #include <QStyle>
 #include <QtGlobal>
 
+namespace {
+
+constexpr int LOADING_ANIMATION_INTERVAL_MS = 80;
+
+const QStringList &loadingSpinnerFrames()
+{
+    static const QStringList frames = {
+        QStringLiteral("⠋"),
+        QStringLiteral("⠙"),
+        QStringLiteral("⠹"),
+        QStringLiteral("⠸"),
+        QStringLiteral("⠼"),
+        QStringLiteral("⠴"),
+        QStringLiteral("⠦"),
+        QStringLiteral("⠧"),
+        QStringLiteral("⠇"),
+        QStringLiteral("⠏"),
+    };
+    return frames;
+}
+
+} // namespace
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , facade(new TelemetryFacade())
+    , loadingAnimationTimer(new QTimer(this))
+    , scrollIdleTimer(new QTimer(this))
 {
     ui->setupUi(this);
 
@@ -33,9 +59,16 @@ MainWindow::MainWindow(QWidget *parent)
                                       Qt::AscendingOrder);
 
     connect(ui->SystemTableView->verticalScrollBar(), &QScrollBar::valueChanged,
-            this, [this](int) { updateFollowMode(); });
+            this, [this](int) {
+        onScrollActivity();
+        updateFollowMode();
+    });
     connect(ui->SystemTableView->horizontalHeader(), &QHeaderView::sortIndicatorChanged,
             this, [this](int, Qt::SortOrder) { updateFollowMode(); });
+
+    scrollIdleTimer->setSingleShot(true);
+    scrollIdleTimer->setInterval(SCROLL_IDLE_MS);
+    connect(scrollIdleTimer.data(), &QTimer::timeout, this, &MainWindow::onScrollIdleTimeout);
 
     connect(viewModel, &TelemetryViewModel::liveDataInserted, this, [this, viewModel]() {
         if (!isGenerating) {
@@ -52,25 +85,36 @@ MainWindow::MainWindow(QWidget *parent)
         }
     });
 
-    connect(viewModel, &TelemetryViewModel::loadingStarted, this, [this]() {
-        setLoadingOverlayVisible(true);
-        setControlsEnabled(false);
-    });
-    connect(viewModel, &TelemetryViewModel::loadingFinished, this, [this, viewModel]() {
-        setLoadingOverlayVisible(false);
-        setControlsEnabled(true);
+    connect(viewModel, &TelemetryViewModel::loadingStarted, this, &MainWindow::acquireUiLock);
+    connect(viewModel, &TelemetryViewModel::loadingFinished, this, [this]() {
+        releaseUiLock();
         updateFollowMode();
+        updateViewportZone();
+    });
+
+    connect(viewModel, &TelemetryViewModel::mergeStarted, this, [this]() {
+        setTableScrollLocked(true);
+    });
+    connect(viewModel, &TelemetryViewModel::mergeFinished, this, [this]() {
+        setTableScrollLocked(false);
+    });
+
+    connect(facade.data(), &TelemetryFacade::connectionStatusChanged,
+            this, &MainWindow::onConnectionStatusChanged);
+
+    loadingAnimationTimer->setInterval(LOADING_ANIMATION_INTERVAL_MS);
+    connect(loadingAnimationTimer.data(), &QTimer::timeout, this, [this]() {
+        const QStringList &frames = loadingSpinnerFrames();
+        loadingAnimationFrame = (loadingAnimationFrame + 1) % frames.size();
+        ui->spinnerAnimationLabel->setText(frames.at(loadingAnimationFrame));
     });
 
     ui->tableStackedWidget->setCurrentWidget(ui->tablePage);
 
     configureFilterControls();
+    resetFilterControlsToDefault();
 
-    const QDateTime now = QDateTime::currentDateTime();
-    ui->filterDateFrom->setDate(now.date());
-    ui->filterTimeFrom->setTime(FilterViewModel::DAY_START_TIME);
-    ui->filterDateTo->setDate(now.date());
-    ui->filterTimeTo->setTime(now.time());
+    ui->resetFilterButton->setIcon(QIcon(QStringLiteral(":/assets/filter-reset.svg")));
 
     bindStatisticsLabels();
 
@@ -80,6 +124,8 @@ MainWindow::MainWindow(QWidget *parent)
             this, &MainWindow::onClearDatabaseClicked);
     connect(ui->applyFilterButton, &QPushButton::clicked,
             this, &MainWindow::onApplyFilterClicked);
+    connect(ui->resetFilterButton, &QToolButton::clicked,
+            this, &MainWindow::onResetFilterClicked);
     connect(ui->filterFieldComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &MainWindow::onFilterFieldChanged);
     connect(ui->filterDoubleSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
@@ -91,9 +137,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->filterToleranceSpinBox, &QDoubleSpinBox::editingFinished,
             this, &MainWindow::normalizeNumericFilterInputs);
 
-    onFilterFieldChanged(ui->filterFieldComboBox->currentIndex());
-    normalizeNumericFilterInputs();
     updateFollowMode();
+    updateViewportZone();
+    facade->telemetryViewModel()->setScrollIdle(true);
 }
 
 MainWindow::~MainWindow() = default;
@@ -130,24 +176,90 @@ void MainWindow::updateFollowMode()
     viewModel->setFollowLiveTail(order == Qt::AscendingOrder ? atBottom : atTop);
 }
 
-void MainWindow::onConnectButtonClicked()
+void MainWindow::updateViewportZone()
 {
     TelemetryViewModel *const viewModel = facade->telemetryViewModel();
-    if (isGenerating) {
-        facade->stopGeneration();
-        setGenerationRunning(false);
+    const QScrollBar *scrollBar = ui->SystemTableView->verticalScrollBar();
+    const bool atTop = scrollBar->value() <= scrollBar->minimum();
+    const bool atBottom = scrollBar->value() >= scrollBar->maximum();
+
+    if (atBottom) {
+        viewModel->setViewportZone(Telemetry::ViewportZone::BottomEdge);
+        return;
+    }
+    if (atTop) {
+        viewModel->setViewportZone(Telemetry::ViewportZone::TopEdge);
+        return;
+    }
+    viewModel->setViewportZone(Telemetry::ViewportZone::Middle);
+}
+
+void MainWindow::onScrollActivity()
+{
+    TelemetryViewModel *const viewModel = facade->telemetryViewModel();
+    viewModel->setScrollIdle(false);
+    scrollIdleTimer->start();
+}
+
+void MainWindow::onScrollIdleTimeout()
+{
+    TelemetryViewModel *const viewModel = facade->telemetryViewModel();
+    viewModel->setScrollIdle(true);
+    updateViewportZone();
+}
+
+void MainWindow::setTableScrollLocked(bool locked)
+{
+    tableScrollLocked = locked;
+    QScrollBar *scrollBar = ui->SystemTableView->verticalScrollBar();
+    scrollBar->setEnabled(!locked && isUiInteractive());
+    ui->SystemTableView->setVerticalScrollBarPolicy(
+        locked ? Qt::ScrollBarAlwaysOff : Qt::ScrollBarAsNeeded);
+}
+
+void MainWindow::onConnectButtonClicked()
+{
+    if (!isUiInteractive()) {
         return;
     }
 
+    TelemetryViewModel *const viewModel = facade->telemetryViewModel();
+    if (isGenerating) {
+        acquireUiLock();
+        viewModel->setLiveUpdatesEnabled(false);
+        viewModel->setFollowLiveTail(false);
+        facade->stopGeneration();
+        return;
+    }
+
+    acquireUiLock();
     viewModel->setLiveUpdatesEnabled(true);
     viewModel->setFilterMode(false);
     viewModel->setFollowLiveTail(true);
     facade->startGeneration();
-    setGenerationRunning(true);
+}
+
+void MainWindow::onConnectionStatusChanged(Telemetry::ConnectionStatus status)
+{
+    switch (status) {
+    case Telemetry::ConnectionStatus::Started:
+        setGenerationRunning(true);
+        releaseUiLock();
+        updateFollowMode();
+        break;
+    case Telemetry::ConnectionStatus::Stopped:
+        setGenerationRunning(false);
+        releaseUiLock();
+        break;
+    }
 }
 
 void MainWindow::onClearDatabaseClicked()
 {
+    if (!isUiInteractive()) {
+        return;
+    }
+
     facade->clearDatabase();
 }
 
@@ -167,8 +279,34 @@ void MainWindow::syncFilterViewModelFromUi()
     filterVm->setTimestampRange(fromDateTime, toDateTime);
 }
 
+void MainWindow::resetFilterControlsToDefault()
+{
+    ui->groupBoxFilter->setEnabled(false);
+
+    ui->filterFieldComboBox->setCurrentIndex(0);
+    ui->filterSpinBox->setValue(FilterQuerySpec::DEFAULT_SENSOR_ID);
+    ui->filterValueOperationComboBox->setCurrentIndex(0);
+    ui->filterDoubleSpinBox->setValue(FilterQuerySpec::DEFAULT_VALUE);
+    ui->filterToleranceSpinBox->setValue(FilterQuerySpec::DEFAULT_TOLERANCE);
+
+    const QDateTime now = QDateTime::currentDateTime();
+    ui->filterDateFrom->setDate(now.date());
+    ui->filterTimeFrom->setTime(FilterViewModel::DAY_START_TIME);
+    ui->filterDateTo->setDate(now.date());
+    ui->filterTimeTo->setTime(now.time());
+
+    onFilterFieldChanged(ui->filterFieldComboBox->currentIndex());
+    normalizeNumericFilterInputs();
+
+    ui->groupBoxFilter->setEnabled(isUiInteractive());
+}
+
 void MainWindow::onApplyFilterClicked()
 {
+    if (!isUiInteractive()) {
+        return;
+    }
+
     TelemetryViewModel *const viewModel = facade->telemetryViewModel();
     syncFilterViewModelFromUi();
     viewModel->setLiveUpdatesEnabled(false);
@@ -180,6 +318,30 @@ void MainWindow::onApplyFilterClicked()
                         header->sortIndicatorSection(),
                         static_cast<int>(header->sortIndicatorOrder()),
                         computeFilterRequestLimit());
+}
+
+void MainWindow::onResetFilterClicked()
+{
+    if (!isUiInteractive()) {
+        return;
+    }
+
+    resetFilterControlsToDefault();
+
+    TelemetryViewModel *const viewModel = facade->telemetryViewModel();
+    if (!viewModel->isFilterMode()) {
+        return;
+    }
+
+    viewModel->setFilterMode(false);
+    if (isGenerating) {
+        viewModel->setLiveUpdatesEnabled(true);
+    }
+
+    const auto *const header = ui->SystemTableView->horizontalHeader();
+    facade->resetFilter(header->sortIndicatorSection(),
+                        static_cast<int>(header->sortIndicatorOrder()));
+    updateFollowMode();
 }
 
 int MainWindow::computeFilterRequestLimit() const
@@ -228,15 +390,59 @@ void MainWindow::setLoadingOverlayVisible(bool visible)
     ui->tableStackedWidget->setCurrentWidget(visible ? ui->loadingPage : ui->tablePage);
 }
 
-void MainWindow::setControlsEnabled(bool enabled)
+bool MainWindow::isUiInteractive() const
 {
+    return uiLockDepth == 0;
+}
+
+void MainWindow::applyUiLockState()
+{
+    const bool enabled = isUiInteractive();
+    ui->groupBoxFilter->setEnabled(enabled);
     ui->SystemTableView->setEnabled(enabled);
     ui->SystemTableView->horizontalHeader()->setSectionsClickable(enabled);
-    ui->applyFilterButton->setEnabled(enabled);
-    ui->filterFieldComboBox->setEnabled(enabled);
-    ui->filterValueStack->setEnabled(enabled);
-    ui->clearDatabaseButton->setEnabled(enabled);
-    ui->connectButton->setEnabled(enabled);
+    ui->SystemTableView->verticalScrollBar()->setEnabled(enabled && !tableScrollLocked);
+}
+
+void MainWindow::acquireUiLock()
+{
+    ++uiLockDepth;
+    if (uiLockDepth != 1) {
+        return;
+    }
+
+    applyUiLockState();
+    setLoadingOverlayVisible(true);
+    startLoadingAnimation();
+}
+
+void MainWindow::releaseUiLock()
+{
+    if (uiLockDepth <= 0) {
+        return;
+    }
+
+    --uiLockDepth;
+    if (uiLockDepth != 0) {
+        return;
+    }
+
+    applyUiLockState();
+    setLoadingOverlayVisible(false);
+    stopLoadingAnimation();
+}
+
+void MainWindow::startLoadingAnimation()
+{
+    loadingAnimationFrame = 0;
+    ui->spinnerAnimationLabel->setText(loadingSpinnerFrames().first());
+    loadingAnimationTimer->start();
+}
+
+void MainWindow::stopLoadingAnimation()
+{
+    loadingAnimationTimer->stop();
+    ui->spinnerAnimationLabel->setText(QStringLiteral("⟳"));
 }
 
 void MainWindow::configureTableColumns()
