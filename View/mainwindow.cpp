@@ -42,6 +42,9 @@ MainWindow::MainWindow(QWidget *parent)
             this, [this](int, Qt::SortOrder) { updateFollowMode(); });
 
     connect(viewModel, &TelemetryViewModel::liveDataInserted, this, [this, viewModel]() {
+        if (!isGenerating) {
+            return;
+        }
         if (!viewModel->isFollowingLiveTail()) {
             return;
         }
@@ -60,13 +63,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(viewModel, &TelemetryViewModel::loadingFinished, this, [this, viewModel]() {
         setLoadingOverlayVisible(false);
         setControlsEnabled(true);
-        viewModel->setFollowLiveTail(true);
-        const Qt::SortOrder order = ui->SystemTableView->horizontalHeader()->sortIndicatorOrder();
-        if (order == Qt::AscendingOrder) {
-            ui->SystemTableView->scrollToBottom();
-        } else {
-            ui->SystemTableView->scrollToTop();
-        }
+        updateFollowMode();
     });
 
     ui->tableStackedWidget->setCurrentWidget(ui->tablePage);

@@ -1,24 +1,16 @@
 #include "tst_telemetryviewmodel.h"
+#include "testhelpers.h"
 #include "ViewModels/telemetryviewmodel.h"
 
 #include <QSignalSpy>
 #include <QtTest>
-
-namespace {
-
-SensorData makeRecord(quint64 recordId, uint64_t sensorId = 1, double value = 10.0, uint64_t timestamp = 1000)
-{
-    return {recordId, sensorId, timestamp, value};
-}
-
-} // namespace
 
 void TestTelemetryViewModel::beginReloading_clearsRecordsAndSetsReloading()
 {
     TelemetryViewModel vm;
     QSignalSpy loadingSpy(&vm, &TelemetryViewModel::loadingStarted);
 
-    vm.onDataLoaded({makeRecord(1)});
+    vm.onDataLoaded({TestHelpers::makeRecord(1)});
     QCOMPARE(vm.recordCount(), 1);
 
     vm.beginReloading();
@@ -32,7 +24,7 @@ void TestTelemetryViewModel::onDataLoaded_populatesInitialChunk()
     TelemetryViewModel vm;
     QSignalSpy liveSpy(&vm, &TelemetryViewModel::liveDataInserted);
 
-    const QVector<SensorData> chunk = {makeRecord(1), makeRecord(2)};
+    const QVector<SensorData> chunk = {TestHelpers::makeRecord(1), TestHelpers::makeRecord(2)};
     vm.onDataLoaded(chunk);
 
     QCOMPARE(vm.recordCount(), 2);
@@ -44,10 +36,10 @@ void TestTelemetryViewModel::onDataLoaded_populatesInitialChunk()
 void TestTelemetryViewModel::onDataLoaded_appendsNewRecords()
 {
     TelemetryViewModel vm;
-    vm.onDataLoaded({makeRecord(1), makeRecord(2)});
+    vm.onDataLoaded({TestHelpers::makeRecord(1), TestHelpers::makeRecord(2)});
 
     QSignalSpy liveSpy(&vm, &TelemetryViewModel::liveDataInserted);
-    vm.onDataLoaded({makeRecord(1), makeRecord(2), makeRecord(3)});
+    vm.onDataLoaded({TestHelpers::makeRecord(1), TestHelpers::makeRecord(2), TestHelpers::makeRecord(3)});
 
     QCOMPARE(vm.recordCount(), 3);
     QCOMPARE(vm.recordAt(2).recordId, 3u);
@@ -57,7 +49,7 @@ void TestTelemetryViewModel::onDataLoaded_appendsNewRecords()
 void TestTelemetryViewModel::onDataLoaded_skipsSameVisibleRange()
 {
     TelemetryViewModel vm;
-    const QVector<SensorData> chunk = {makeRecord(10), makeRecord(11)};
+    const QVector<SensorData> chunk = {TestHelpers::makeRecord(10), TestHelpers::makeRecord(11)};
     vm.onDataLoaded(chunk);
 
     QSignalSpy liveSpy(&vm, &TelemetryViewModel::liveDataInserted);
@@ -90,7 +82,7 @@ void TestTelemetryViewModel::setFollowLiveTail_isIdempotent()
 void TestTelemetryViewModel::onDatabaseCleared_resetsState()
 {
     TelemetryViewModel vm;
-    vm.onDataLoaded({makeRecord(1)});
+    vm.onDataLoaded({TestHelpers::makeRecord(1)});
     QSignalSpy finishedSpy(&vm, &TelemetryViewModel::loadingFinished);
 
     vm.onDatabaseCleared();

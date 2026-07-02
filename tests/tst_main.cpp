@@ -7,6 +7,7 @@
 #include "Domain/metatypes.h"
 
 #include <QCoreApplication>
+#include <QDebug>
 #include <QtTest>
 
 int main(int argc, char *argv[])
@@ -19,27 +20,55 @@ int main(int argc, char *argv[])
     qRegisterMetaType<Telemetry::AnchorSide>();
 
     int status = 0;
+    int passedSuites = 0;
+    int failedSuites = 0;
+    int totalFailedChecks = 0;
 
     {
         TestSensorStatistics suite;
-        status |= QTest::qExec(&suite, argc, argv);
+        const int suiteStatus = QTest::qExec(&suite, argc, argv);
+        status |= suiteStatus;
+        totalFailedChecks += suiteStatus;
+        suiteStatus == 0 ? ++passedSuites : ++failedSuites;
     }
     {
         TestFilterViewModel suite;
-        status |= QTest::qExec(&suite, argc, argv);
+        const int suiteStatus = QTest::qExec(&suite, argc, argv);
+        status |= suiteStatus;
+        totalFailedChecks += suiteStatus;
+        suiteStatus == 0 ? ++passedSuites : ++failedSuites;
     }
     {
         TestStatisticsViewModel suite;
-        status |= QTest::qExec(&suite, argc, argv);
+        const int suiteStatus = QTest::qExec(&suite, argc, argv);
+        status |= suiteStatus;
+        totalFailedChecks += suiteStatus;
+        suiteStatus == 0 ? ++passedSuites : ++failedSuites;
     }
     {
         TestTelemetryViewModel suite;
-        status |= QTest::qExec(&suite, argc, argv);
+        const int suiteStatus = QTest::qExec(&suite, argc, argv);
+        status |= suiteStatus;
+        totalFailedChecks += suiteStatus;
+        suiteStatus == 0 ? ++passedSuites : ++failedSuites;
     }
     {
         TestDBDataControll suite;
-        status |= QTest::qExec(&suite, argc, argv);
+        const int suiteStatus = QTest::qExec(&suite, argc, argv);
+        status |= suiteStatus;
+        totalFailedChecks += suiteStatus;
+        suiteStatus == 0 ? ++passedSuites : ++failedSuites;
     }
+
+    qInfo().noquote() << QStringLiteral(
+                             "\n======== Overall Test Summary ========\n"
+                             "Suites passed: %1\n"
+                             "Suites failed: %2\n"
+                             "Failed checks: %3\n"
+                             "======================================")
+                             .arg(passedSuites)
+                             .arg(failedSuites)
+                             .arg(totalFailedChecks);
 
     return status;
 }

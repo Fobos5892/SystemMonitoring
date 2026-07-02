@@ -1,19 +1,11 @@
 #include "tst_dbdatacontroll.h"
+#include "testhelpers.h"
 #include "Infrastructure/Persistence/dbdatacontroll.h"
 
 #include <QDateTime>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
-
-namespace {
-
-SensorData makeRecord(quint64 recordId, uint64_t sensorId, double value, uint64_t timestamp)
-{
-    return {recordId, sensorId, timestamp, value};
-}
-
-} // namespace
 
 void TestDBDataControll::init()
 {
@@ -43,9 +35,9 @@ void TestDBDataControll::initializeDatabase_createsPersistentSchema()
 void TestDBDataControll::saveAndFetch_sortedByTimestamp()
 {
     const QVector<SensorData> batch = {
-        makeRecord(0, 1, 10.0, 1000),
-        makeRecord(0, 2, 20.0, 2000),
-        makeRecord(0, 1, 30.0, 3000),
+        TestHelpers::makeRecord(0, 1, 10.0, 1000),
+        TestHelpers::makeRecord(0, 2, 20.0, 2000),
+        TestHelpers::makeRecord(0, 1, 30.0, 3000),
     };
 
     controller->onSaveBatchToSql(batch);
@@ -64,7 +56,7 @@ void TestDBDataControll::saveAndFetch_sortedByTimestamp()
 
 void TestDBDataControll::clearDatabase_removesRows()
 {
-    controller->onSaveBatchToSql({makeRecord(0, 1, 5.0, 5000)});
+    controller->onSaveBatchToSql({TestHelpers::makeRecord(0, 1, 5.0, 5000)});
 
     QSignalSpy clearedSpy(controller.data(), &DBDataControll::databaseCleared);
     controller->clearDatabase();
@@ -82,9 +74,9 @@ void TestDBDataControll::fetchSensorStatistics_aggregatesSavedBatch()
 {
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
     controller->onSaveBatchToSql({
-        makeRecord(0, 1, 10.0, nowMs),
-        makeRecord(0, 2, 30.0, nowMs),
-        makeRecord(0, 3, 20.0, nowMs),
+        TestHelpers::makeRecord(0, 1, 10.0, nowMs),
+        TestHelpers::makeRecord(0, 2, 30.0, nowMs),
+        TestHelpers::makeRecord(0, 3, 20.0, nowMs),
     });
 
     QSignalSpy statsSpy(controller.data(), &DBDataControll::sensorStatisticsLoaded);
@@ -93,7 +85,7 @@ void TestDBDataControll::fetchSensorStatistics_aggregatesSavedBatch()
 
     const SensorStatistics stats = statsSpy.at(0).at(0).value<SensorStatistics>();
     QCOMPARE(stats.connectedCount(), 3);
-    QCOMPARE(stats.minimumValue(), 10.0);
-    QCOMPARE(stats.maximumValue(), 30.0);
-    QVERIFY(qFuzzyCompare(stats.averageValue(), 20.0));
+    QVERIFY(TestHelpers::nearlyEqual(stats.minimumValue(), 10.0));
+    QVERIFY(TestHelpers::nearlyEqual(stats.maximumValue(), 30.0));
+    QVERIFY(TestHelpers::nearlyEqual(stats.averageValue(), 20.0));
 }

@@ -17,7 +17,7 @@ void TestStatisticsViewModel::updateStatistics_formatsLabels()
     vm.updateStatistics(stats);
 
     QCOMPARE(spy.count(), 1);
-    QCOMPARE(vm.connectedLabel(), QStringLiteral("Активных датчиков: 2"));
+    QCOMPARE(vm.connectedLabel(), QStringLiteral("Активных датчиков(за 10 минут): 2"));
     QCOMPARE(vm.averageLabel(), QStringLiteral("Среднее: 10.50 В"));
     QCOMPARE(vm.minimumLabel(), QStringLiteral("Минимум: 1.25 В"));
     QCOMPARE(vm.maximumLabel(), QStringLiteral("Максимум: 20.00 В"));

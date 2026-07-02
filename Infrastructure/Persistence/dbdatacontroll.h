@@ -14,7 +14,7 @@ class DBDataControll : public QObject {
     Q_OBJECT
 public:
     static constexpr int FILTER_QUERY_LIMIT = 500;
-    static constexpr int SENSOR_ACTIVITY_WINDOW_MS = 10 * 60 * 1000;
+    static constexpr int SENSOR_ACTIVITY_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
     DBDataControll() = delete;
     DBDataControll(const DBDataControll& value) = delete;
