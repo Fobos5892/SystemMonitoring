@@ -396,9 +396,14 @@
             </widget>
            </item>
            <item>
-            <widget class="QDateTimeEdit" name="filterDateFrom">
+            <widget class="QDateEdit" name="filterDateFrom">
              <property name="calendarPopup"><bool>true</bool></property>
-             <property name="displayFormat"><string>dd.MM.yyyy HH:mm</string></property>
+             <property name="displayFormat"><string>dd.MM.yyyy</string></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QTimeEdit" name="filterTimeFrom">
+             <property name="displayFormat"><string>HH:mm</string></property>
             </widget>
            </item>
            <item>
@@ -407,9 +412,14 @@
             </widget>
            </item>
            <item>
-            <widget class="QDateTimeEdit" name="filterDateTo">
+            <widget class="QDateEdit" name="filterDateTo">
              <property name="calendarPopup"><bool>true</bool></property>
-             <property name="displayFormat"><string>dd.MM.yyyy HH:mm</string></property>
+             <property name="displayFormat"><string>dd.MM.yyyy</string></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QTimeEdit" name="filterTimeTo">
+             <property name="displayFormat"><string>HH:mm</string></property>
             </widget>
            </item>
           </layout>

@@ -25,6 +25,7 @@ public:
     void setFollowLiveTail(bool follow);
     void setLiveUpdatesEnabled(bool enabled);
     void setFilterMode(bool enabled);
+    bool isFilterMode() const { return filterMode; }
     bool isFollowingLiveTail() const { return followLiveTail; }
     bool isReloading() const { return reloading; }
     bool isLiveTailView() const;
@@ -42,7 +43,7 @@ signals:
 
 public slots:
     void requestSort(int column, Qt::SortOrder order);
-    void beginReloading();
+    void beginReloading(int requestLimit = Telemetry::WINDOW_SIZE);
     void onBatchCommitted();
     void onDataLoaded(const QVector<SensorData> &chunk);
     void onTailDataLoaded(const QVector<SensorData> &chunk);
@@ -83,6 +84,7 @@ private:
 
     int currentSortColumn = static_cast<int>(Telemetry::Column::Timestamp);
     Qt::SortOrder currentSortOrder = Qt::AscendingOrder;
+    int pendingRequestLimit = Telemetry::WINDOW_SIZE;
 };
 
 #endif // TELEMETRYVIEWMODEL_H

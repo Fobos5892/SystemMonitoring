@@ -1,4 +1,5 @@
 #include "tst_dbdatacontroll.h"
+#include "tst_filterqueryspec.h"
 #include "tst_filterviewmodel.h"
 #include "tst_sensorstatistics.h"
 #include "tst_statisticsviewmodel.h"
@@ -17,6 +18,7 @@ int main(int argc, char *argv[])
     qRegisterMetaType<SensorData>();
     qRegisterMetaType<SensorStatistics>();
     qRegisterMetaType<QVector<SensorData>>();
+    qRegisterMetaType<FilterQuerySpec>();
     qRegisterMetaType<Telemetry::AnchorSide>();
 
     int status = 0;
@@ -26,6 +28,13 @@ int main(int argc, char *argv[])
 
     {
         TestSensorStatistics suite;
+        const int suiteStatus = QTest::qExec(&suite, argc, argv);
+        status |= suiteStatus;
+        totalFailedChecks += suiteStatus;
+        suiteStatus == 0 ? ++passedSuites : ++failedSuites;
+    }
+    {
+        TestFilterQuerySpec suite;
         const int suiteStatus = QTest::qExec(&suite, argc, argv);
         status |= suiteStatus;
         totalFailedChecks += suiteStatus;

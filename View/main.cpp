@@ -9,6 +9,7 @@ int main(int argc, char *argv[])
     qRegisterMetaType<SensorData>();
     qRegisterMetaType<SensorStatistics>();
     qRegisterMetaType<QVector<SensorData>>();
+    qRegisterMetaType<FilterQuerySpec>();
     qRegisterMetaType<Telemetry::AnchorSide>();
 
     QApplication a(argc, argv);

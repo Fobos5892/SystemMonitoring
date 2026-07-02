@@ -2,6 +2,7 @@
 #define DBDATACONTROLL_H
 
 #include "dbconnect.h"
+#include "Domain/filterqueryspec.h"
 #include "Domain/sensordata.h"
 #include "Domain/sensorstatistics.h"
 #include "Domain/telemetrytypes.h"
@@ -13,7 +14,6 @@ class DatabaseConnectionManager;
 class DBDataControll : public QObject {
     Q_OBJECT
 public:
-    static constexpr int FILTER_QUERY_LIMIT = 500;
     static constexpr int SENSOR_ACTIVITY_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
     DBDataControll() = delete;
@@ -34,7 +34,7 @@ public slots:
     void fetchRangeNearAnchor(int sortColumn, int sortOrder, quint64 anchorRecordId,
                               int limit, Telemetry::AnchorSide side);
 
-    void applyFilterQuery(const QString &filterCondition);
+    void applyFilterQuery(const FilterQuerySpec &filterSpec, int sortColumn, int sortOrder, int limit);
     void clearDatabase();
     void fetchSensorStatistics();
 
@@ -52,8 +52,12 @@ private:
     static QString sortColumnSql(int sortColumn);
     static SensorData readRow(const QSqlQuery &query);
     SensorStatistics loadSensorStatistics() const;
+    QVector<SensorData> loadSortedWindowWithFilter(const FilterQuerySpec &filterSpec, int sortColumn,
+                                                   int sortOrder, int limit) const;
 
     bool m_dbInitialized = false;
+    bool m_hasActiveFilter = false;
+    FilterQuerySpec m_activeFilterSpec;
     QScopedPointer<DatabaseConnectionManager> m_dbManager;
 };
 

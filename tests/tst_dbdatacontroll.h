@@ -18,6 +18,7 @@ private slots:
     void saveAndFetch_sortedByTimestamp();
     void clearDatabase_removesRows();
     void fetchSensorStatistics_aggregatesSavedBatch();
+    void applyFilterQuery_timestampRange_returnsMatchingRows();
 
 private:
     QScopedPointer<QTemporaryDir> tempDir;

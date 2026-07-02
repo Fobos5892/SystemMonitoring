@@ -6,6 +6,7 @@
 
 #include "Domain/sensordata.h"
 #include "Domain/sensorstatistics.h"
+#include "Domain/filterqueryspec.h"
 #include "Domain/telemetrytypes.h"
 
 Q_DECLARE_METATYPE(SensorData)

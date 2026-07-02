@@ -12,6 +12,7 @@ INCLUDEPATH += $$ROOT
 
 SOURCES += \
     $$ROOT/Domain/sensorstatistics.cpp \
+    $$ROOT/Domain/filterqueryspec.cpp \
     $$ROOT/Infrastructure/Persistence/dbconnect.cpp \
     $$ROOT/Infrastructure/Persistence/dbdatacontroll.cpp \
     $$ROOT/ViewModels/filterviewmodel.cpp \
@@ -20,6 +21,7 @@ SOURCES += \
     $$ROOT/ViewModels/telemetryviewmodel.cpp \
     tst_main.cpp \
     tst_sensorstatistics.cpp \
+    tst_filterqueryspec.cpp \
     tst_filterviewmodel.cpp \
     tst_statisticsviewmodel.cpp \
     tst_telemetryviewmodel.cpp \
@@ -27,6 +29,7 @@ SOURCES += \
 
 HEADERS += \
     tst_sensorstatistics.h \
+    tst_filterqueryspec.h \
     tst_filterviewmodel.h \
     tst_statisticsviewmodel.h \
     tst_telemetryviewmodel.h \

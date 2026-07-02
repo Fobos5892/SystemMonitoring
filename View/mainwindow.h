@@ -40,6 +40,7 @@ private:
     void setControlsEnabled(bool enabled);
     void bindStatisticsLabels();
     void updateFollowMode();
+    int computeFilterRequestLimit() const;
 
     QScopedPointer<Ui::MainWindow> ui;
     QScopedPointer<TelemetryFacade> facade;

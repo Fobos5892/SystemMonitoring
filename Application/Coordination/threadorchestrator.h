@@ -7,6 +7,7 @@
 #include <QScopedPointer>
 #include <QString>
 #include <QTimer>
+#include "Domain/filterqueryspec.h"
 #include "Domain/sensorstatistics.h"
 #include "Domain/telemetrytypes.h"
 
@@ -32,7 +33,7 @@ public slots:
     void onConnectRequested();
     void onStopGenerationRequested();
     void onClearDatabaseRequested();
-    void onFilterRequested(const QString &filterCondition);
+    void onFilterRequested(const FilterQuerySpec &filterSpec, int sortColumn, int sortOrder, int limit);
     void onBatchCommittedFromDb();
     void onDebouncedFilterRefresh();
     void onSortRequested(int column, int sortOrder);
@@ -59,7 +60,10 @@ private:
     QThread sqlThread;
 
     bool filterActive = false;
-    QString filterCondition;
+    int currentSortColumn = static_cast<int>(Telemetry::Column::Timestamp);
+    int currentSortOrder = static_cast<int>(Qt::AscendingOrder);
+    int filterLimit = Telemetry::WINDOW_SIZE;
+    FilterQuerySpec filterSpec;
     QTimer filterRefreshTimer;
 };
 #endif // THREADORCHESTRATOR_H

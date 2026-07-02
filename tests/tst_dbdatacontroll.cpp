@@ -1,5 +1,6 @@
 #include "tst_dbdatacontroll.h"
 #include "testhelpers.h"
+#include "Domain/filterqueryspec.h"
 #include "Infrastructure/Persistence/dbdatacontroll.h"
 
 #include <QDateTime>
@@ -88,4 +89,26 @@ void TestDBDataControll::fetchSensorStatistics_aggregatesSavedBatch()
     QVERIFY(TestHelpers::nearlyEqual(stats.minimumValue(), 10.0));
     QVERIFY(TestHelpers::nearlyEqual(stats.maximumValue(), 30.0));
     QVERIFY(TestHelpers::nearlyEqual(stats.averageValue(), 20.0));
+}
+
+void TestDBDataControll::applyFilterQuery_timestampRange_returnsMatchingRows()
+{
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    controller->onSaveBatchToSql({
+        TestHelpers::makeRecord(0, 1, 10.0, nowMs - 1000),
+        TestHelpers::makeRecord(0, 2, 20.0, nowMs - 2000),
+        TestHelpers::makeRecord(0, 3, 30.0, nowMs - 3600 * 1000),
+    });
+
+    FilterQuerySpec spec;
+    spec.setField(FilterQuerySpec::Field::Timestamp);
+    spec.setTimestampRange(nowMs - 5000, nowMs);
+
+    QSignalSpy dataSpy(controller.data(), &DBDataControll::dataLoaded);
+    controller->applyFilterQuery(spec,
+                                 static_cast<int>(Telemetry::Column::Timestamp),
+                                 static_cast<int>(Qt::AscendingOrder),
+                                 10);
+    QCOMPARE(dataSpy.count(), 1);
+    QCOMPARE(dataSpy.at(0).at(0).value<QVector<SensorData>>().size(), 2);
 }

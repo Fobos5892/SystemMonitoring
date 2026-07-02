@@ -1,9 +1,12 @@
 #ifndef FILTERVIEWMODEL_H
 #define FILTERVIEWMODEL_H
 
+#include "Domain/filterqueryspec.h"
+
+#include <QDate>
 #include <QDateTime>
 #include <QObject>
-#include <QString>
+#include <QTime>
 
 class FilterViewModel : public QObject {
     Q_OBJECT
@@ -30,7 +33,9 @@ public:
     void setValueFilter(double value, double tolerance, ValueOperation operation);
     void setTimestampRange(const QDateTime &from, const QDateTime &to);
 
-    QString buildSqlCondition() const;
+    static QDateTime combineLocalDateTime(const QDate &date, const QTime &time);
+
+    FilterQuerySpec buildQuerySpec() const;
 
     static double normalizeValue(double value);
     static double normalizeTolerance(double tolerance);

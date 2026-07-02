@@ -58,7 +58,8 @@ void TelemetryFacade::clearDatabase()
     orchestrator->onClearDatabaseRequested();
 }
 
-void TelemetryFacade::applyFilter(const QString &filterCondition)
+void TelemetryFacade::applyFilter(const FilterQuerySpec &filterSpec, int sortColumn,
+                                  int sortOrder, int limit)
 {
-    orchestrator->onFilterRequested(filterCondition);
+    orchestrator->onFilterRequested(filterSpec, sortColumn, sortOrder, limit);
 }

@@ -10,11 +10,13 @@ private slots:
     void normalizeValue_clampsAndTruncates();
     void normalizeTolerance_clampsAndTruncates();
     void adaptiveToleranceStep_selectsFineStepForSmallTolerance();
-    void buildSqlCondition_sensorId();
-    void buildSqlCondition_valueNear();
-    void buildSqlCondition_valueGreater();
-    void buildSqlCondition_valueLess();
-    void buildSqlCondition_timestampRange_ordersBounds();
+    void buildQuerySpec_sensorId();
+    void buildQuerySpec_valueNear();
+    void buildQuerySpec_valueGreater();
+    void buildQuerySpec_valueLess();
+    void buildQuerySpec_timestampRange_ordersBounds();
+    void combineLocalDateTime_producesValidEpoch();
+    void buildQuerySpec_timestampOnlyWhenFieldIsTimestamp();
 };
 
 #endif // TST_FILTERVIEWMODEL_H

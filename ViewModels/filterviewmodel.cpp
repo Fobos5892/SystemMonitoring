@@ -2,10 +2,18 @@
 
 #include <algorithm>
 #include <cmath>
+#include <QTimeZone>
 
 FilterViewModel::FilterViewModel(QObject *parent)
     : QObject(parent)
+    , dateFrom(QDateTime(QDate::currentDate(), QTime(0, 0), QTimeZone::systemTimeZone()))
+    , dateTo(QDateTime::currentDateTime())
 {
+}
+
+QDateTime FilterViewModel::combineLocalDateTime(const QDate &date, const QTime &time)
+{
+    return QDateTime(date, time, QTimeZone::systemTimeZone());
 }
 
 void FilterViewModel::setField(Field field)
@@ -52,36 +60,21 @@ double FilterViewModel::adaptiveToleranceStep(double tolerance)
     return tolerance < 0.01 ? 0.0001 : 0.01;
 }
 
-QString FilterViewModel::buildSqlCondition() const
+FilterQuerySpec FilterViewModel::buildQuerySpec() const
 {
-    switch (field) {
-    case Field::SensorId:
-        return QStringLiteral("sensor_id = %1").arg(sensorId);
-    case Field::Value: {
-        const double normalizedValue = normalizeValue(value);
-        const double normalizedTolerance = normalizeTolerance(tolerance);
-        const QString valueSql = QString::number(normalizedValue, 'f', 2);
-        const QString toleranceSql = QString::number(normalizedTolerance, 'f', 4);
+    FilterQuerySpec spec;
+    spec.setField(static_cast<FilterQuerySpec::Field>(field));
+    spec.setSensorId(sensorId);
+    spec.setValue(normalizeValue(value));
+    spec.setTolerance(normalizeTolerance(tolerance));
+    spec.setValueOperation(static_cast<FilterQuerySpec::ValueOperation>(valueOperation));
 
-        switch (valueOperation) {
-        case ValueOperation::Near:
-            return QStringLiteral("ABS(value - %1) <= %2").arg(valueSql, toleranceSql);
-        case ValueOperation::Greater:
-            return QStringLiteral("value > %1")
-                .arg(QString::number(normalizedValue + normalizedTolerance, 'f', 4));
-        case ValueOperation::Less:
-            return QStringLiteral("value < %1")
-                .arg(QString::number(normalizedValue - normalizedTolerance, 'f', 4));
-        }
-        return {};
+    if (field == Field::Timestamp) {
+        const QDateTime from = dateFrom.isValid() ? dateFrom : QDateTime::currentDateTime();
+        const QDateTime to = dateTo.isValid() ? dateTo : QDateTime::currentDateTime();
+        spec.setTimestampRange(from.toMSecsSinceEpoch(), to.toMSecsSinceEpoch());
     }
-    case Field::Timestamp: {
-        const qint64 fromMs = dateFrom.toMSecsSinceEpoch();
-        const qint64 toMs = dateTo.toMSecsSinceEpoch();
-        const qint64 startMs = qMin(fromMs, toMs);
-        const qint64 endMs = qMax(fromMs, toMs);
-        return QStringLiteral("timestamp BETWEEN %1 AND %2").arg(startMs).arg(endMs);
-    }
-    }
-    return {};
+
+    return spec;
 }
+

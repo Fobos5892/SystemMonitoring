@@ -63,10 +63,14 @@ void DbTelemetryRepository::fetchRangeNearAnchor(int sortColumn, int sortOrder,
                               Q_ARG(Telemetry::AnchorSide, side));
 }
 
-void DbTelemetryRepository::applyFilterQuery(const QString &filterCondition)
+void DbTelemetryRepository::applyFilterQuery(const FilterQuerySpec &filterSpec, int sortColumn,
+                                             int sortOrder, int limit)
 {
     QMetaObject::invokeMethod(dataController.data(), "applyFilterQuery", Qt::QueuedConnection,
-                              Q_ARG(QString, filterCondition));
+                              Q_ARG(FilterQuerySpec, filterSpec),
+                              Q_ARG(int, sortColumn),
+                              Q_ARG(int, sortOrder),
+                              Q_ARG(int, limit));
 }
 
 void DbTelemetryRepository::clearDatabase()

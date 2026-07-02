@@ -22,7 +22,8 @@ public slots:
     void fetchSortedTail(int sortColumn, int sortOrder, int limit) override;
     void fetchRangeNearAnchor(int sortColumn, int sortOrder, quint64 anchorRecordId,
                               int limit, Telemetry::AnchorSide side) override;
-    void applyFilterQuery(const QString &filterCondition) override;
+    void applyFilterQuery(const FilterQuerySpec &filterSpec, int sortColumn,
+                          int sortOrder, int limit) override;
     void clearDatabase() override;
     void fetchSensorStatistics() override;
 

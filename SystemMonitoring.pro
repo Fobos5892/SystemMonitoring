@@ -10,6 +10,7 @@ SOURCES += \
     Application/Coordination/threadorchestrator.cpp \
     Application/telemetryfacade.cpp \
     Domain/sensorstatistics.cpp \
+    Domain/filterqueryspec.cpp \
     Infrastructure/Devices/devicereceiver.cpp \
     Infrastructure/Devices/devicesimulator.cpp \
     Infrastructure/Persistence/dbconnect.cpp \
@@ -29,6 +30,7 @@ HEADERS += \
     Domain/metatypes.h \
     Domain/sensordata.h \
     Domain/sensorstatistics.h \
+    Domain/filterqueryspec.h \
     Domain/telemetrytypes.h \
     Infrastructure/Devices/devicereceiver.h \
     Infrastructure/Devices/devicesimulator.h \

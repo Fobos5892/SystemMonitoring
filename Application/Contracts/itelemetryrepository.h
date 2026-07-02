@@ -3,6 +3,7 @@
 
 #include "Domain/sensordata.h"
 #include "Domain/sensorstatistics.h"
+#include "Domain/filterqueryspec.h"
 #include "Domain/telemetrytypes.h"
 #include <QObject>
 #include <QString>
@@ -23,7 +24,8 @@ public slots:
     virtual void fetchSortedTail(int sortColumn, int sortOrder, int limit) = 0;
     virtual void fetchRangeNearAnchor(int sortColumn, int sortOrder, quint64 anchorRecordId,
                                     int limit, Telemetry::AnchorSide side) = 0;
-    virtual void applyFilterQuery(const QString &filterCondition) = 0;
+    virtual void applyFilterQuery(const FilterQuerySpec &filterSpec, int sortColumn,
+                                  int sortOrder, int limit) = 0;
     virtual void clearDatabase() = 0;
     virtual void fetchSensorStatistics() = 0;
 

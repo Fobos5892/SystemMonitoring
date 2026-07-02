@@ -46,7 +46,7 @@ bool TelemetryViewModel::isLiveTailView() const
 
 void TelemetryViewModel::handleRowAccessed(int row)
 {
-    if (filterMode || bufferLoading || reloading) {
+    if (bufferLoading || reloading) {
         return;
     }
 
@@ -58,12 +58,13 @@ void TelemetryViewModel::handleRowAccessed(int row)
     }
 }
 
-void TelemetryViewModel::beginReloading()
+void TelemetryViewModel::beginReloading(int requestLimit)
 {
     if (reloading) {
         return;
     }
 
+    pendingRequestLimit = qMax(1, requestLimit);
     reloading = true;
     bufferLoading = true;
 
@@ -94,8 +95,8 @@ void TelemetryViewModel::requestSort(int column, Qt::SortOrder order)
 void TelemetryViewModel::finishReloading(const QVector<SensorData> &chunk)
 {
     records = chunk;
-    reachedBottom = chunk.size() < Telemetry::WINDOW_SIZE;
-    reachedTop = chunk.size() < Telemetry::WINDOW_SIZE;
+    reachedTop = true;
+    reachedBottom = chunk.size() < pendingRequestLimit;
     bufferLoading = false;
     reloading = false;
     followLiveTail = liveUpdatesEnabled;
@@ -157,7 +158,9 @@ void TelemetryViewModel::onDataLoaded(const QVector<SensorData> &chunk)
 void TelemetryViewModel::applyIncrementalDataUpdate(const QVector<SensorData> &chunk)
 {
     if (chunk.isEmpty()) {
-        clearRecordsOnEmptyUpdate();
+        if (!filterMode) {
+            clearRecordsOnEmptyUpdate();
+        }
         return;
     }
     if (records.isEmpty()) {
@@ -273,8 +276,8 @@ void TelemetryViewModel::resetRecordsFromChunk(const QVector<SensorData> &chunk)
 
 void TelemetryViewModel::setBoundaryFlagsForChunkSize(int size)
 {
-    reachedTop = size < Telemetry::WINDOW_SIZE;
-    reachedBottom = size < Telemetry::WINDOW_SIZE;
+    reachedTop = true;
+    reachedBottom = size < pendingRequestLimit;
 }
 
 void TelemetryViewModel::onTailDataLoaded(const QVector<SensorData> &chunk)
@@ -370,7 +373,7 @@ void TelemetryViewModel::slideWindow(int count, SlideDirection direction)
 {
     const bool slidingDown = direction == SlideDirection::Down;
 
-    if (filterMode || records.isEmpty() || reloading || bufferLoading) {
+    if (records.isEmpty() || reloading || bufferLoading) {
         return;
     }
     if (slidingDown && reachedBottom) {

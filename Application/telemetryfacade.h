@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QScopedPointer>
+#include "Domain/filterqueryspec.h"
 
 class FilterViewModel;
 class StatisticsViewModel;
@@ -26,7 +27,7 @@ public:
     void startGeneration();
     void stopGeneration();
     void clearDatabase();
-    void applyFilter(const QString &filterCondition);
+    void applyFilter(const FilterQuerySpec &filterSpec, int sortColumn, int sortOrder, int limit);
 
 private:
     QScopedPointer<TelemetryViewModel> telemetryViewModelInstance;

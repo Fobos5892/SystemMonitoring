@@ -4,6 +4,7 @@
 #include "Infrastructure/Persistence/dbdatacontroll.h"
 #include "Infrastructure/Persistence/dbtelemetryrepository.h"
 #include "ViewModels/telemetryviewmodel.h"
+#include <QtGlobal>
 
 ThreadOrchestrator::ThreadOrchestrator(TelemetryViewModel *viewModel, QObject *parent)
     : QObject(parent)
@@ -129,19 +130,23 @@ void ThreadOrchestrator::onClearDatabaseRequested() {
     repository->clearDatabase();
 }
 
-void ThreadOrchestrator::onFilterRequested(const QString &filterCondition) {
+void ThreadOrchestrator::onFilterRequested(const FilterQuerySpec &filterSpec,
+                                           int sortColumn, int sortOrder, int limit) {
     filterActive = true;
-    this->filterCondition = filterCondition;
+    currentSortColumn = sortColumn;
+    currentSortOrder = sortOrder;
+    this->filterSpec = filterSpec;
+    filterLimit = qMax(limit, Telemetry::CHUNK_SIZE);
     filterRefreshTimer.stop();
-    viewModel->beginReloading();
-    repository->applyFilterQuery(filterCondition);
+    viewModel->beginReloading(filterLimit);
+    repository->applyFilterQuery(filterSpec, currentSortColumn, currentSortOrder, filterLimit);
 }
 
 void ThreadOrchestrator::onBatchCommittedFromDb() {
-    if (!filterActive || filterCondition.isEmpty()) {
+    if (!filterActive) {
         return;
     }
-    if (viewModel->isReloading()) {
+    if (viewModel->isReloading() || !viewModel->isFilterMode()) {
         return;
     }
 
@@ -149,25 +154,26 @@ void ThreadOrchestrator::onBatchCommittedFromDb() {
 }
 
 void ThreadOrchestrator::onDebouncedFilterRefresh() {
-    if (!filterActive || filterCondition.isEmpty() || viewModel->isReloading()) {
+    if (!filterActive || viewModel->isReloading()) {
         return;
     }
 
-    repository->applyFilterQuery(filterCondition);
+    repository->applyFilterQuery(filterSpec, currentSortColumn, currentSortOrder, filterLimit);
 }
 
 void ThreadOrchestrator::onSortRequested(int column, int sortOrder) {
+    currentSortColumn = column;
+    currentSortOrder = sortOrder;
     if (filterActive) {
         filterRefreshTimer.stop();
         if (!viewModel->isReloading()) {
-            viewModel->beginReloading();
+            viewModel->beginReloading(filterLimit);
         }
-        repository->applyFilterQuery(filterCondition);
+        repository->applyFilterQuery(filterSpec, column, sortOrder, filterLimit);
         return;
     }
 
     filterActive = false;
-    filterCondition.clear();
     filterRefreshTimer.stop();
     repository->fetchSortedWindow(column, sortOrder, Telemetry::WINDOW_SIZE);
 }

@@ -10,6 +10,7 @@
 #include <QSignalBlocker>
 #include <QScrollBar>
 #include <QStyle>
+#include <QtGlobal>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -69,8 +70,10 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tableStackedWidget->setCurrentWidget(ui->tablePage);
 
     const QDateTime now = QDateTime::currentDateTime();
-    ui->filterDateFrom->setDateTime(now.date().startOfDay());
-    ui->filterDateTo->setDateTime(now);
+    ui->filterDateFrom->setDate(now.date());
+    ui->filterTimeFrom->setTime(QTime(0, 0));
+    ui->filterDateTo->setDate(now.date());
+    ui->filterTimeTo->setTime(now.time());
 
     bindStatisticsLabels();
 
@@ -154,13 +157,17 @@ void MainWindow::onClearDatabaseClicked()
 void MainWindow::syncFilterViewModelFromUi()
 {
     FilterViewModel *const filterVm = facade->filterViewModel();
+    const QDateTime fromDateTime =
+        FilterViewModel::combineLocalDateTime(ui->filterDateFrom->date(), ui->filterTimeFrom->time());
+    const QDateTime toDateTime =
+        FilterViewModel::combineLocalDateTime(ui->filterDateTo->date(), ui->filterTimeTo->time());
     filterVm->setField(static_cast<FilterViewModel::Field>(ui->filterFieldComboBox->currentIndex()));
     filterVm->setSensorId(ui->filterSpinBox->value());
     filterVm->setValueFilter(
         ui->filterDoubleSpinBox->value(),
         ui->filterToleranceSpinBox->value(),
         static_cast<FilterViewModel::ValueOperation>(ui->filterValueOperationComboBox->currentIndex()));
-    filterVm->setTimestampRange(ui->filterDateFrom->dateTime(), ui->filterDateTo->dateTime());
+    filterVm->setTimestampRange(fromDateTime, toDateTime);
 }
 
 void MainWindow::onApplyFilterClicked()
@@ -170,7 +177,24 @@ void MainWindow::onApplyFilterClicked()
     viewModel->setLiveUpdatesEnabled(false);
     viewModel->setFilterMode(true);
     viewModel->setFollowLiveTail(false);
-    facade->applyFilter(facade->filterViewModel()->buildSqlCondition());
+    const FilterQuerySpec filterSpec = facade->filterViewModel()->buildQuerySpec();
+    const auto *const header = ui->SystemTableView->horizontalHeader();
+    facade->applyFilter(filterSpec,
+                        header->sortIndicatorSection(),
+                        static_cast<int>(header->sortIndicatorOrder()),
+                        computeFilterRequestLimit());
+}
+
+int MainWindow::computeFilterRequestLimit() const
+{
+    const int rowHeight = ui->SystemTableView->verticalHeader()->defaultSectionSize();
+    if (rowHeight <= 0) {
+        return Telemetry::WINDOW_SIZE;
+    }
+
+    const int visibleRows = ui->SystemTableView->viewport()->height() / rowHeight;
+    const int bufferedRows = visibleRows + Telemetry::CHUNK_SIZE;
+    return qBound(Telemetry::CHUNK_SIZE, bufferedRows, Telemetry::WINDOW_SIZE);
 }
 
 void MainWindow::onFilterFieldChanged(int index)
