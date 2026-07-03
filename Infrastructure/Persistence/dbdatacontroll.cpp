@@ -221,17 +221,17 @@ QVector<SensorData> DBDataControll::saveBatchAndReturnInserted(const QVector<Sen
     return inserted;
 }
 
-void DBDataControll::onSaveBatchToSql(const QVector<SensorData> &batch) {
-    if (batch.isEmpty() || !m_dbInitialized) {
+void DBDataControll::onSaveBatchToSql(SensorDataBatch batch) {
+    if (!batch || batch->isEmpty() || !m_dbInitialized) {
         return;
     }
 
-    const QVector<SensorData> inserted = saveBatchAndReturnInserted(batch);
+    QVector<SensorData> inserted = saveBatchAndReturnInserted(*batch);
     if (inserted.isEmpty()) {
         return;
     }
 
-    emit batchCommitted(inserted);
+    emit batchCommitted(makeSensorDataBatch(std::move(inserted)));
     emit sensorStatisticsLoaded(loadSensorStatistics());
 }
 
@@ -321,7 +321,7 @@ void DBDataControll::fetchSensorStatistics() {
 
 void DBDataControll::fetchSortedWindow(int sortColumn, int sortOrder, int limit) {
     if (!m_dbInitialized) {
-        emit dataLoaded({});
+        emit dataLoaded(emptySensorDataBatch());
         return;
     }
     m_hasActiveFilter = false;
@@ -348,12 +348,12 @@ void DBDataControll::fetchSortedWindow(int sortColumn, int sortOrder, int limit)
         qCritical() << "Ошибка сортировки в SQL:" << query.lastError().text();
     }
 
-    emit dataLoaded(result);
+    emit dataLoaded(makeSensorDataBatch(std::move(result)));
 }
 
 void DBDataControll::fetchSortedTail(int sortColumn, int sortOrder, int limit) {
     if (!m_dbInitialized) {
-        emit tailDataLoaded({});
+        emit tailDataLoaded(emptySensorDataBatch());
         return;
     }
     m_hasActiveFilter = false;
@@ -381,14 +381,14 @@ void DBDataControll::fetchSortedTail(int sortColumn, int sortOrder, int limit) {
     }
 
     std::reverse(result.begin(), result.end());
-    emit tailDataLoaded(result);
+    emit tailDataLoaded(makeSensorDataBatch(std::move(result)));
 }
 
 void DBDataControll::fetchRangeNearAnchor(int sortColumn, int sortOrder,
                                           quint64 anchorRecordId, int limit,
                                           Telemetry::AnchorSide side) {
     if (!m_dbInitialized || anchorRecordId == SensorData::DEFAULT_RECORD_ID) {
-        emit rangeNearAnchorLoaded({}, side);
+        emit rangeNearAnchorLoaded(emptySensorDataBatch(), side);
         return;
     }
 
@@ -397,20 +397,22 @@ void DBDataControll::fetchRangeNearAnchor(int sortColumn, int sortOrder,
     const QString activeFilterSql = m_hasActiveFilter
         ? m_activeFilterSpec.toSqlCondition(QStringLiteral("t"))
         : QString();
-    emit rangeNearAnchorLoaded(
-        loadRangeNearAnchor(anchorRecordId, limit, column, ascending, side, activeFilterSql), side);
+    QVector<SensorData> chunk =
+        loadRangeNearAnchor(anchorRecordId, limit, column, ascending, side, activeFilterSql);
+    emit rangeNearAnchorLoaded(makeSensorDataBatch(std::move(chunk)), side);
 }
 
 void DBDataControll::applyFilterQuery(const FilterQuerySpec &filterSpec, int sortColumn,
                                       int sortOrder, int limit) {
     if (!m_dbInitialized) {
-        emit dataLoaded({});
+        emit dataLoaded(emptySensorDataBatch());
         return;
     }
 
     m_hasActiveFilter = true;
     m_activeFilterSpec = filterSpec;
-    emit dataLoaded(loadSortedWindowWithFilter(filterSpec, sortColumn, sortOrder, limit));
+    QVector<SensorData> chunk = loadSortedWindowWithFilter(filterSpec, sortColumn, sortOrder, limit);
+    emit dataLoaded(makeSensorDataBatch(std::move(chunk)));
 }
 
 void DBDataControll::clearDatabase() {

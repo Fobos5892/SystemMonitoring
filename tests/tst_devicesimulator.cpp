@@ -86,8 +86,9 @@ void TestDeviceSimulator::startGeneration_producesDataBatch()
     QVERIFY(QTest::qWaitFor([&batchSpy]() { return batchSpy.count() > 0; },
                             TestConstants::DEVICE_SIMULATOR_WAIT_MS));
 
-    const auto batch = batchSpy.at(0).at(0).value<QVector<SensorData>>();
-    QCOMPARE(batch.size(), DeviceSimulator::GENERATION_BATCH_SIZE);
+    const SensorDataBatch batch = batchSpy.at(0).at(0).value<SensorDataBatch>();
+    QVERIFY(batch);
+    QCOMPARE(batch->size(), DeviceSimulator::GENERATION_BATCH_SIZE);
 
     simulator.stopGeneration();
 }

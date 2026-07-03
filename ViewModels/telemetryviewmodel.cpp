@@ -165,14 +165,14 @@ void TelemetryViewModel::requestLiveRefresh()
     }
 }
 
-void TelemetryViewModel::onBatchCommitted(const QVector<SensorData> &inserted)
+void TelemetryViewModel::onBatchCommitted(SensorDataBatch inserted)
 {
-    if (reloading || inserted.isEmpty()) {
+    if (reloading || !inserted || inserted->isEmpty()) {
         return;
     }
 
     if (filterMode && hasActiveFilterSpec) {
-        mergeFilterInsertions(inserted);
+        mergeFilterInsertions(*inserted);
         return;
     }
 
@@ -208,13 +208,16 @@ void TelemetryViewModel::mergeFilterInsertions(const QVector<SensorData> &insert
     emit mergeFinished();
 }
 
-void TelemetryViewModel::onDataLoaded(const QVector<SensorData> &chunk)
+void TelemetryViewModel::onDataLoaded(SensorDataBatch chunk)
 {
-    if (reloading) {
-        finishReloading(chunk);
+    if (!chunk) {
         return;
     }
-    applyIncrementalDataUpdate(chunk);
+    if (reloading) {
+        finishReloading(*chunk);
+        return;
+    }
+    applyIncrementalDataUpdate(*chunk);
 }
 
 void TelemetryViewModel::applyIncrementalDataUpdate(const QVector<SensorData> &chunk)
@@ -342,14 +345,14 @@ void TelemetryViewModel::setBoundaryFlagsForChunkSize(int size)
     reachedBottom = size < pendingRequestLimit;
 }
 
-void TelemetryViewModel::onTailDataLoaded(const QVector<SensorData> &chunk)
+void TelemetryViewModel::onTailDataLoaded(SensorDataBatch chunk)
 {
-    if (reloading || chunk.isEmpty()) {
+    if (reloading || !chunk || chunk->isEmpty()) {
         return;
     }
 
-    records = chunk;
-    reachedTop = chunk.size() < Telemetry::WINDOW_SIZE;
+    records = *chunk;
+    reachedTop = chunk->size() < Telemetry::WINDOW_SIZE;
     reachedBottom = false;
     bufferLoading = false;
 
@@ -379,14 +382,15 @@ void TelemetryViewModel::trimWindowFromBottom(int count)
     reachedBottom = false;
 }
 
-void TelemetryViewModel::onRangeNearAnchorLoaded(const QVector<SensorData> &chunk,
-                                                 Telemetry::AnchorSide side)
+void TelemetryViewModel::onRangeNearAnchorLoaded(SensorDataBatch chunk, Telemetry::AnchorSide side)
 {
-    if (reloading) {
+    if (reloading || !chunk) {
         return;
     }
 
-    if (chunk.isEmpty()) {
+    const QVector<SensorData> &rows = *chunk;
+
+    if (rows.isEmpty()) {
         if (side == Telemetry::AnchorSide::Bottom) {
             reachedBottom = true;
         } else {
@@ -396,7 +400,7 @@ void TelemetryViewModel::onRangeNearAnchorLoaded(const QVector<SensorData> &chun
         return;
     }
 
-    if (chunk.size() < Telemetry::CHUNK_SIZE) {
+    if (rows.size() < Telemetry::CHUNK_SIZE) {
         if (side == Telemetry::AnchorSide::Bottom) {
             reachedBottom = true;
         } else {
@@ -406,8 +410,8 @@ void TelemetryViewModel::onRangeNearAnchorLoaded(const QVector<SensorData> &chun
 
     if (side == Telemetry::AnchorSide::Bottom) {
         const int insertPos = records.size();
-        records.append(chunk);
-        table->notifyRowsInserted(insertPos, insertPos + chunk.size() - 1);
+        records.append(rows);
+        table->notifyRowsInserted(insertPos, insertPos + rows.size() - 1);
 
         if (records.size() > Telemetry::WINDOW_SIZE) {
             trimWindowFromTop(records.size() - Telemetry::WINDOW_SIZE);
@@ -418,10 +422,10 @@ void TelemetryViewModel::onRangeNearAnchorLoaded(const QVector<SensorData> &chun
         return;
     }
 
-    for (int i = chunk.size() - 1; i >= 0; --i) {
-        records.prepend(chunk[i]);
+    for (int i = rows.size() - 1; i >= 0; --i) {
+        records.prepend(rows[i]);
     }
-    table->notifyRowsInserted(0, chunk.size() - 1);
+    table->notifyRowsInserted(0, rows.size() - 1);
 
     if (records.size() > Telemetry::WINDOW_SIZE) {
         trimWindowFromBottom(records.size() - Telemetry::WINDOW_SIZE);

@@ -2,6 +2,7 @@
 #define ITELEMETRYREPOSITORY_H
 
 #include "Domain/sensordata.h"
+#include "Domain/sensordatabatch.h"
 #include "Domain/sensorstatistics.h"
 #include "Domain/filterqueryspec.h"
 #include "Domain/telemetrytypes.h"
@@ -19,7 +20,7 @@ public:
 public slots:
     virtual void initializeDatabase() = 0;
     virtual void shutdownDatabase() = 0;
-    virtual void saveBatch(const QVector<SensorData> &batch) = 0;
+    virtual void saveBatch(SensorDataBatch batch) = 0;
     virtual void fetchSortedWindow(int sortColumn, int sortOrder, int limit) = 0;
     virtual void fetchSortedTail(int sortColumn, int sortOrder, int limit) = 0;
     virtual void fetchRangeNearAnchor(int sortColumn, int sortOrder, quint64 anchorRecordId,
@@ -30,11 +31,11 @@ public slots:
     virtual void fetchSensorStatistics() = 0;
 
 signals:
-    void dataLoaded(const QVector<SensorData> &chunk);
-    void tailDataLoaded(const QVector<SensorData> &chunk);
-    void rangeNearAnchorLoaded(const QVector<SensorData> &chunk, Telemetry::AnchorSide side);
+    void dataLoaded(SensorDataBatch chunk);
+    void tailDataLoaded(SensorDataBatch chunk);
+    void rangeNearAnchorLoaded(SensorDataBatch chunk, Telemetry::AnchorSide side);
     void sensorStatisticsLoaded(const SensorStatistics &stats);
-    void batchCommitted(const QVector<SensorData> &inserted);
+    void batchCommitted(SensorDataBatch inserted);
     void databaseCleared();
 };
 

@@ -20,9 +20,13 @@ void DeviceReceiver::stopProcessing()
     flushData();
 }
 
-void DeviceReceiver::onRawDataReceived(const QVector<SensorData> &rawBatch)
+void DeviceReceiver::onRawDataReceived(SensorDataBatch rawBatch)
 {
-    m_localBuffer.append(rawBatch);
+    if (!rawBatch || rawBatch->isEmpty()) {
+        return;
+    }
+
+    m_localBuffer.append(*rawBatch);
 
     // Предохранитель по объему памяти
     if (m_localBuffer.size() >= BUFFER_FLUSH_THRESHOLD) {
@@ -33,7 +37,7 @@ void DeviceReceiver::onRawDataReceived(const QVector<SensorData> &rawBatch)
 void DeviceReceiver::flushData() {
     if (m_localBuffer.isEmpty()) return;
 
-    emit dataBatchReady(m_localBuffer);
+    emit dataBatchReady(makeSensorDataBatch(std::move(m_localBuffer)));
     m_localBuffer.clear();
 }
 

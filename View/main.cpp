@@ -3,12 +3,14 @@
 #include <QApplication>
 #include <QIcon>
 #include "Domain/metatypes.h"
+#include "Domain/sensordatabatch.h"
 
 int main(int argc, char *argv[])
 {
     qRegisterMetaType<SensorData>();
     qRegisterMetaType<SensorStatistics>();
     qRegisterMetaType<QVector<SensorData>>();
+    qRegisterMetaType<SensorDataBatch>();
     qRegisterMetaType<FilterQuerySpec>();
     qRegisterMetaType<Telemetry::AnchorSide>();
 

@@ -9,6 +9,7 @@
 #include "tst_threadorchestrator.h"
 
 #include "Domain/metatypes.h"
+#include "Domain/sensordatabatch.h"
 
 #include <QCoreApplication>
 #include <QDebug>
@@ -21,6 +22,7 @@ int main(int argc, char *argv[])
     qRegisterMetaType<SensorData>();
     qRegisterMetaType<SensorStatistics>();
     qRegisterMetaType<QVector<SensorData>>();
+    qRegisterMetaType<SensorDataBatch>();
     qRegisterMetaType<FilterQuerySpec>();
     qRegisterMetaType<Telemetry::AnchorSide>();
     qRegisterMetaType<Telemetry::ConnectionStatus>();

@@ -29,10 +29,10 @@ void DbTelemetryRepository::shutdownDatabase()
     QMetaObject::invokeMethod(dataController.data(), "shutdownDatabase", Qt::QueuedConnection);
 }
 
-void DbTelemetryRepository::saveBatch(const QVector<SensorData> &batch)
+void DbTelemetryRepository::saveBatch(SensorDataBatch batch)
 {
     QMetaObject::invokeMethod(dataController.data(), "onSaveBatchToSql", Qt::QueuedConnection,
-                              Q_ARG(QVector<SensorData>, batch));
+                              Q_ARG(SensorDataBatch, batch));
 }
 
 void DbTelemetryRepository::fetchSortedWindow(int sortColumn, int sortOrder, int limit)

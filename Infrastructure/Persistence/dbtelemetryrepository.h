@@ -17,7 +17,7 @@ public:
 public slots:
     void initializeDatabase() override;
     void shutdownDatabase() override;
-    void saveBatch(const QVector<SensorData> &batch) override;
+    void saveBatch(SensorDataBatch batch) override;
     void fetchSortedWindow(int sortColumn, int sortOrder, int limit) override;
     void fetchSortedTail(int sortColumn, int sortOrder, int limit) override;
     void fetchRangeNearAnchor(int sortColumn, int sortOrder, quint64 anchorRecordId,

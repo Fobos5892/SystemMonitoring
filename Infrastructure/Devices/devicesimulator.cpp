@@ -40,5 +40,5 @@ void DeviceSimulator::generateDataTick()
         batch.append(data);
     }
 
-    emit rawDataGenerated(batch);
+    emit rawDataGenerated(makeSensorDataBatch(std::move(batch)));
 }

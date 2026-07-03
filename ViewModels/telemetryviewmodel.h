@@ -3,6 +3,7 @@
 
 #include "Domain/filterqueryspec.h"
 #include "Domain/sensordata.h"
+#include "Domain/sensordatabatch.h"
 #include "Domain/telemetrytypes.h"
 #include <QObject>
 #include <QScopedPointer>
@@ -52,10 +53,10 @@ signals:
 public slots:
     void requestSort(int column, Qt::SortOrder order);
     void beginReloading(int requestLimit = Telemetry::WINDOW_SIZE);
-    void onBatchCommitted(const QVector<SensorData> &inserted);
-    void onDataLoaded(const QVector<SensorData> &chunk);
-    void onTailDataLoaded(const QVector<SensorData> &chunk);
-    void onRangeNearAnchorLoaded(const QVector<SensorData> &chunk, Telemetry::AnchorSide side);
+    void onBatchCommitted(SensorDataBatch inserted);
+    void onDataLoaded(SensorDataBatch chunk);
+    void onTailDataLoaded(SensorDataBatch chunk);
+    void onRangeNearAnchorLoaded(SensorDataBatch chunk, Telemetry::AnchorSide side);
     void onDatabaseCleared();
 
 private:

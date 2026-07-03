@@ -12,6 +12,7 @@
 Q_DECLARE_METATYPE(SensorData)
 Q_DECLARE_METATYPE(SensorStatistics)
 Q_DECLARE_METATYPE(QVector<SensorData>)
+Q_DECLARE_METATYPE(SensorDataBatch)
 Q_DECLARE_METATYPE(Telemetry::AnchorSide)
 Q_DECLARE_METATYPE(Telemetry::ConnectionStatus)
 Q_DECLARE_METATYPE(Telemetry::ViewportZone)

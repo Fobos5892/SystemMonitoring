@@ -4,6 +4,7 @@
 #include "dbconnect.h"
 #include "Domain/filterqueryspec.h"
 #include "Domain/sensordata.h"
+#include "Domain/sensordatabatch.h"
 #include "Domain/sensorstatistics.h"
 #include "Domain/telemetrytypes.h"
 #include <QScopedPointer>
@@ -28,7 +29,7 @@ public slots:
     void initializeDatabase();
     void shutdownDatabase();
 
-    void onSaveBatchToSql(const QVector<SensorData> &batch);
+    void onSaveBatchToSql(SensorDataBatch batch);
 
     void fetchSortedWindow(int sortColumn, int sortOrder, int limit);
     void fetchSortedTail(int sortColumn, int sortOrder, int limit);
@@ -40,11 +41,11 @@ public slots:
     void fetchSensorStatistics();
 
 signals:
-    void dataLoaded(const QVector<SensorData> &chunk);
-    void tailDataLoaded(const QVector<SensorData> &chunk);
-    void rangeNearAnchorLoaded(const QVector<SensorData> &chunk, Telemetry::AnchorSide side);
+    void dataLoaded(SensorDataBatch chunk);
+    void tailDataLoaded(SensorDataBatch chunk);
+    void rangeNearAnchorLoaded(SensorDataBatch chunk, Telemetry::AnchorSide side);
     void sensorStatisticsLoaded(const SensorStatistics &stats);
-    void batchCommitted(const QVector<SensorData> &inserted);
+    void batchCommitted(SensorDataBatch inserted);
     void databaseCleared();
 
 private:

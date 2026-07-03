@@ -33,6 +33,7 @@ HEADERS += \
     Domain/filterlimits.h \
     Domain/sensorlimits.h \
     Domain/sensordata.h \
+    Domain/sensordatabatch.h \
     Domain/sensorstatistics.h \
     Domain/filterqueryspec.h \
     Domain/telemetrymergelogic.h \

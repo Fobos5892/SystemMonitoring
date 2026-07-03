@@ -1,4 +1,5 @@
 #include "tst_telemetryviewmodel.h"
+#include "Domain/sensordatabatch.h"
 #include "Domain/telemetrytypes.h"
 #include "testconstants.h"
 #include "testhelpers.h"
@@ -12,7 +13,8 @@ void TestTelemetryViewModel::beginReloading_clearsRecordsAndSetsReloading()
     TelemetryViewModel vm;
     QSignalSpy loadingSpy(&vm, &TelemetryViewModel::loadingStarted);
 
-    vm.onDataLoaded({TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_FIRST)});
+    vm.onDataLoaded(makeSensorDataBatch(
+        {TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_FIRST)}));
     QCOMPARE(vm.recordCount(), 1);
 
     vm.beginReloading();
@@ -28,7 +30,7 @@ void TestTelemetryViewModel::onDataLoaded_populatesInitialChunk()
 
     const QVector<SensorData> chunk = {TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_FIRST),
                                        TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_SECOND)};
-    vm.onDataLoaded(chunk);
+    vm.onDataLoaded(makeSensorDataBatch(chunk));
 
     QCOMPARE(vm.recordCount(), TestConstants::DB_SENSOR_ID_SECOND);
     QCOMPARE(vm.recordAt(0).recordId, TestConstants::TELEMETRY_RECORD_FIRST);
@@ -39,13 +41,13 @@ void TestTelemetryViewModel::onDataLoaded_populatesInitialChunk()
 void TestTelemetryViewModel::onDataLoaded_appendsNewRecords()
 {
     TelemetryViewModel vm;
-    vm.onDataLoaded({TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_FIRST),
-                     TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_SECOND)});
+    vm.onDataLoaded(makeSensorDataBatch({TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_FIRST),
+                     TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_SECOND)}));
 
     QSignalSpy liveSpy(&vm, &TelemetryViewModel::liveDataInserted);
-    vm.onDataLoaded({TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_FIRST),
+    vm.onDataLoaded(makeSensorDataBatch({TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_FIRST),
                      TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_SECOND),
-                     TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_THIRD)});
+                     TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_THIRD)}));
 
     QCOMPARE(vm.recordCount(), TestConstants::DB_SENSOR_ID_THIRD);
     QCOMPARE(vm.recordAt(2).recordId, TestConstants::TELEMETRY_RECORD_THIRD);
@@ -57,10 +59,10 @@ void TestTelemetryViewModel::onDataLoaded_skipsSameVisibleRange()
     TelemetryViewModel vm;
     const QVector<SensorData> chunk = {TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_TEN),
                                        TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_ELEVEN)};
-    vm.onDataLoaded(chunk);
+    vm.onDataLoaded(makeSensorDataBatch(chunk));
 
     QSignalSpy liveSpy(&vm, &TelemetryViewModel::liveDataInserted);
-    vm.onDataLoaded(chunk);
+    vm.onDataLoaded(makeSensorDataBatch(chunk));
     QCOMPARE(vm.recordCount(), TestConstants::DB_SENSOR_ID_SECOND);
     QCOMPARE(liveSpy.count(), 0);
 }
@@ -89,7 +91,8 @@ void TestTelemetryViewModel::setFollowLiveTail_isIdempotent()
 void TestTelemetryViewModel::onDatabaseCleared_resetsState()
 {
     TelemetryViewModel vm;
-    vm.onDataLoaded({TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_FIRST)});
+    vm.onDataLoaded(makeSensorDataBatch(
+        {TestHelpers::makeRecord(TestConstants::TELEMETRY_RECORD_FIRST)}));
     QSignalSpy finishedSpy(&vm, &TelemetryViewModel::loadingFinished);
 
     vm.onDatabaseCleared();
@@ -115,7 +118,7 @@ void loadFilterWindow(TelemetryViewModel &vm, const QVector<SensorData> &chunk)
     vm.setActiveFilterSpec(sensorFilter(TestConstants::SAMPLE_SENSOR_ID));
     vm.setViewportZone(Telemetry::ViewportZone::BottomEdge);
     vm.beginReloading(TestConstants::DEFAULT_QUERY_LIMIT);
-    vm.onDataLoaded(chunk);
+    vm.onDataLoaded(makeSensorDataBatch(chunk));
 }
 
 } // namespace
@@ -130,7 +133,8 @@ void TestTelemetryViewModel::onBatchCommitted_inFilterMode_mergesWhenScrollIdle(
     vm.setScrollIdle(true);
 
     QSignalSpy liveSpy(&vm, &TelemetryViewModel::liveDataInserted);
-    vm.onBatchCommitted({TestHelpers::makeRecord(3, TestConstants::SAMPLE_SENSOR_ID, 30.0, 300)});
+    vm.onBatchCommitted(makeSensorDataBatch(
+        {TestHelpers::makeRecord(3, TestConstants::SAMPLE_SENSOR_ID, 30.0, 300)}));
 
     QCOMPARE(vm.recordCount(), 3);
     QCOMPARE(vm.recordAt(2).recordId, static_cast<quint64>(3));
@@ -147,7 +151,8 @@ void TestTelemetryViewModel::onBatchCommitted_inFilterMode_skipsWhenScrolling()
     vm.setScrollIdle(false);
 
     QSignalSpy liveSpy(&vm, &TelemetryViewModel::liveDataInserted);
-    vm.onBatchCommitted({TestHelpers::makeRecord(3, TestConstants::SAMPLE_SENSOR_ID, 30.0, 300)});
+    vm.onBatchCommitted(makeSensorDataBatch(
+        {TestHelpers::makeRecord(3, TestConstants::SAMPLE_SENSOR_ID, 30.0, 300)}));
 
     QCOMPARE(vm.recordCount(), 2);
     QCOMPARE(liveSpy.count(), 0);
@@ -164,7 +169,8 @@ void TestTelemetryViewModel::onBatchCommitted_inFilterMode_emitsMergeSignals()
     QSignalSpy mergeStartSpy(&vm, &TelemetryViewModel::mergeStarted);
     QSignalSpy mergeFinishSpy(&vm, &TelemetryViewModel::mergeFinished);
 
-    vm.onBatchCommitted({TestHelpers::makeRecord(2, TestConstants::SAMPLE_SENSOR_ID, 20.0, 200)});
+    vm.onBatchCommitted(makeSensorDataBatch(
+        {TestHelpers::makeRecord(2, TestConstants::SAMPLE_SENSOR_ID, 20.0, 200)}));
 
     QCOMPARE(mergeStartSpy.count(), 1);
     QCOMPARE(mergeFinishSpy.count(), 1);

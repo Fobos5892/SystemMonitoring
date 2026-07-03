@@ -5,6 +5,7 @@
 #include <QTimer>
 #include <QVector>
 #include "Domain/sensordata.h"
+#include "Domain/sensordatabatch.h"
 
 class DeviceReceiver : public QObject {
     Q_OBJECT
@@ -16,11 +17,11 @@ public:
 
 signals:
     // Сигнал для отправки очищенного и упакованного пакета дальше по конвейеру
-    void dataBatchReady(const QVector<SensorData> &batch);
+    void dataBatchReady(SensorDataBatch batch);
 
 public slots:
     // Слот принимает набор сырых данных
-    void onRawDataReceived(const QVector<SensorData> &rawBatch);
+    void onRawDataReceived(SensorDataBatch rawBatch);
     void startProcessing();
     void stopProcessing();
 

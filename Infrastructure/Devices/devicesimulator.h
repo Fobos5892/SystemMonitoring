@@ -9,6 +9,7 @@
 #include <QRandomGenerator>
 #include <QDateTime>
 #include "Domain/sensordata.h"
+#include "Domain/sensordatabatch.h"
 
 class DeviceSimulator : public QObject {
     Q_OBJECT
@@ -25,7 +26,7 @@ public:
 
 signals:
     // Сигнал передает сгенерированную пачку данных в ресивер
-    void rawDataGenerated(const QVector<SensorData> &rawBatch);
+    void rawDataGenerated(SensorDataBatch rawBatch);
     void connectionStatusChanged(Telemetry::ConnectionStatus status);
 
 public slots:
