@@ -42,8 +42,8 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.5.3'
+          arch: gcc_64
           cache: true
-          modules: qtbase qttools qtsql
 
       - name: Build and test
         run: python scripts/build.py tests --release --run-tests

@@ -205,9 +205,9 @@ QVector<SensorData> DBDataControll::saveBatchAndReturnInserted(const QVector<Sen
 
     inserted.reserve(batch.size());
     for (const auto &record : batch) {
-        query.bindValue(":sid", record.sensorId);
+        query.bindValue(":sid", static_cast<qulonglong>(record.sensorId));
         query.bindValue(":val", record.value);
-        query.bindValue(":ts", record.timestamp);
+        query.bindValue(":ts", static_cast<qulonglong>(record.timestamp));
         if (!query.exec()) {
             qCritical() << "Ошибка вставки в SQL:" << query.lastError().text();
             continue;
