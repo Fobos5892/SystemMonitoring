@@ -79,9 +79,9 @@ def parse_args() -> argparse.Namespace:
         help="remove the build directory before configuring",
     )
     parser.add_argument(
-        "--deploy",
+        "--no-deploy",
         action="store_true",
-        help="on Windows, run windeployqt for app/all (copies Qt DLLs next to exe)",
+        help="on Windows, skip windeployqt (by default DLLs are copied next to each exe)",
     )
     parser.add_argument(
         "--qmake-arg",
@@ -120,6 +120,20 @@ def resolve_qt_bin(args: argparse.Namespace) -> Path:
 
 def qmake_name() -> str:
     return "qmake.exe" if platform.system() == "Windows" else "qmake"
+
+
+def detect_qt_version(qt_bin: Path) -> str:
+    qmake = qt_bin / qmake_name()
+    try:
+        result = subprocess.run(
+            [str(qmake), "-query", "QT_VERSION"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
 
 
 def make_program(env: dict[str, str]) -> str:
@@ -181,13 +195,29 @@ def augment_path_with_mingw(qt_bin: Path, env: dict[str, str]) -> None:
         env["PATH"] = os.pathsep.join([str(compiler_bin), env["PATH"]])
 
 
-def deploy_windows_app(exe: Path, qt_bin: Path, env: dict[str, str]) -> None:
+def deploy_windows_binary(exe: Path, qt_bin: Path, env: dict[str, str]) -> None:
     windeployqt = qt_bin / "windeployqt.exe"
     if not windeployqt.is_file():
         print(f"skip deploy: {windeployqt} not found", flush=True)
         return
 
-    run([str(windeployqt), "--compiler-runtime", str(exe)], env=env, cwd=exe.parent)
+    command = [str(windeployqt), "--compiler-runtime", "--no-translations", str(exe)]
+    run(command, env=env, cwd=exe.parent)
+
+
+def deploy_windows_outputs(
+    build_dir: Path,
+    target: str,
+    config: str,
+    qt_bin: Path,
+    env: dict[str, str],
+) -> None:
+    for label, path in collect_outputs(build_dir, target, config):
+        resolved = path.resolve()
+        if not resolved.is_file():
+            continue
+        print(f"Deploy ({label}): {resolved}", flush=True)
+        deploy_windows_binary(resolved, qt_bin, env)
 
 
 def build_config(args: argparse.Namespace) -> str:
@@ -239,7 +269,11 @@ def main() -> int:
     args = parse_args()
     config = build_config(args)
     pro_file = TARGETS[args.target]
-    build_dir = args.build_dir or (ROOT / "build" / "py" / f"{args.target}-{config}")
+
+    qt_bin = resolve_qt_bin(args)
+    qt_version = detect_qt_version(qt_bin)
+
+    build_dir = args.build_dir or (ROOT / "build" / "py" / f"{args.target}-qt{qt_version}-{config}")
     build_dir = build_dir.resolve()
 
     if args.clean and build_dir.exists():
@@ -247,10 +281,11 @@ def main() -> int:
 
     build_dir.mkdir(parents=True, exist_ok=True)
 
-    qt_bin = resolve_qt_bin(args)
     env = os.environ.copy()
     env["PATH"] = os.pathsep.join([str(qt_bin), env.get("PATH", "")])
     augment_path_with_mingw(qt_bin, env)
+
+    print(f"Qt {qt_version} ({qt_bin.parent.name})", flush=True)
 
     qmake = qt_bin / qmake_name()
     qmake_command = [str(qmake), str(pro_file), f"CONFIG+={config}", *args.qmake_arg]
@@ -269,10 +304,8 @@ def main() -> int:
             raise SystemExit(f"test binary not found: {test_binary.resolve()}")
         run([str(test_binary), "-o", "-,txt"], env=env, cwd=build_dir)
 
-    if args.deploy or (platform.system() == "Windows" and args.target in {"app", "all"}):
-        for label, path in collect_outputs(build_dir, args.target, config):
-            if label == "app" and path.is_file():
-                deploy_windows_app(path.resolve(), qt_bin, env)
+    if platform.system() == "Windows" and not args.no_deploy:
+        deploy_windows_outputs(build_dir, args.target, config, qt_bin, env)
 
     print_outputs(build_dir, args.target, config)
     return 0

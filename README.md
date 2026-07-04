@@ -227,7 +227,9 @@ python scripts/build.py app --qt-dir C:/Qt/6.11.1/mingw_64 --debug
 python scripts/build.py all --release --qt-dir C:/Qt/5.15.2/mingw81_64
 ```
 
-`qmake` ищется в `PATH`, `QTDIR` или в `--qt-dir`. Артефакты: `build/py/<target>-<config>/`.
+`qmake` ищется в `PATH`, `QTDIR` или в `--qt-dir`. Артефакты: `build/py/<target>-qt<version>-<config>/` (например `app-qt5.15.2-release`, `tests-qt6.11.1-release`).
+
+На Windows `windeployqt` вызывается автоматически — рядом с exe копируются Qt DLL и MinGW-рантайм; exe можно запускать из Проводника. Отключить: `--no-deploy`.
 
 ## Тесты
 
