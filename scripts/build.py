@@ -152,15 +152,48 @@ def run(command: list[str], *, env: dict[str, str], cwd: Path) -> None:
     subprocess.run(command, cwd=cwd, env=env, check=True)
 
 
-def binary_path(build_dir: Path, component: str, config: str, *, from_subdirs: bool = False) -> Path:
+def binary_name(component: str) -> str:
     name = BINARY_NAMES[component]
     if platform.system() == "Windows":
         name += ".exe"
+    return name
+
+
+def binary_candidates(
+    build_dir: Path,
+    component: str,
+    config: str,
+    *,
+    from_subdirs: bool = False,
+) -> list[Path]:
+    name = binary_name(component)
+    bases = [build_dir]
     if from_subdirs and component == "tests":
-        base = build_dir / "tests"
-    else:
-        base = build_dir
-    return base / config / name
+        bases.insert(0, build_dir / "tests")
+
+    candidates: list[Path] = []
+    for base in bases:
+        candidates.append(base / config / name)  # Windows MinGW, macOS
+        candidates.append(base / name)           # Linux qmake
+
+    unique: list[Path] = []
+    for path in candidates:
+        if path not in unique:
+            unique.append(path)
+    return unique
+
+
+def resolve_binary(
+    build_dir: Path,
+    component: str,
+    config: str,
+    *,
+    from_subdirs: bool = False,
+) -> Path | None:
+    for path in binary_candidates(build_dir, component, config, from_subdirs=from_subdirs):
+        if path.is_file():
+            return path.resolve()
+    return None
 
 
 def mingw_bin_from_qmake(qt_bin: Path) -> Path | None:
@@ -241,9 +274,14 @@ def collect_outputs(
     outputs: list[tuple[str, Path]] = []
 
     if target in {"tests", "all"}:
-        outputs.append(("tests", binary_path(build_dir, "tests", config, from_subdirs=from_subdirs)))
+        resolved = resolve_binary(build_dir, "tests", config, from_subdirs=from_subdirs)
+        if resolved is not None:
+            outputs.append(("tests", resolved))
+
     if target in {"app", "all"}:
-        outputs.append(("app", binary_path(build_dir, "app", config, from_subdirs=from_subdirs)))
+        resolved = resolve_binary(build_dir, "app", config, from_subdirs=from_subdirs)
+        if resolved is not None:
+            outputs.append(("app", resolved))
 
     return outputs
 
@@ -252,17 +290,18 @@ def print_outputs(build_dir: Path, target: str, config: str) -> None:
     print(f"\nBuild OK: {build_dir}", flush=True)
     print("Output:", flush=True)
 
-    found = False
-    for label, path in collect_outputs(build_dir, target, config):
-        resolved = path.resolve()
-        if resolved.is_file():
-            print(f"  {label}: {resolved}", flush=True)
-            found = True
-        else:
-            print(f"  {label}: (not found) {resolved}", flush=True)
+    outputs = collect_outputs(build_dir, target, config)
+    if not outputs:
+        expected = binary_candidates(
+            build_dir,
+            "tests" if target in {"tests", "all"} else "app",
+            config,
+            from_subdirs=target == "all",
+        )
+        raise SystemExit(f"build finished but no executable was found (expected one of: {expected})")
 
-    if not found:
-        raise SystemExit("build finished but no executable was found")
+    for label, path in outputs:
+        print(f"  {label}: {path}", flush=True)
 
 
 def main() -> int:
@@ -299,9 +338,10 @@ def main() -> int:
     from_subdirs = args.target == "all"
 
     if should_run_tests(args.target, args):
-        test_binary = binary_path(build_dir, "tests", config, from_subdirs=from_subdirs)
-        if not test_binary.is_file():
-            raise SystemExit(f"test binary not found: {test_binary.resolve()}")
+        test_binary = resolve_binary(build_dir, "tests", config, from_subdirs=from_subdirs)
+        if test_binary is None:
+            candidates = binary_candidates(build_dir, "tests", config, from_subdirs=from_subdirs)
+            raise SystemExit(f"test binary not found (expected one of: {candidates})")
         run([str(test_binary), "-o", "-,txt"], env=env, cwd=build_dir)
 
     if platform.system() == "Windows" and not args.no_deploy:
