@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    name: Qt ${{ matrix.qt-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        qt-version: ['5.15.2', '6.5.3']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1-mesa-dev \
+            libglib2.0-dev \
+            libxkbcommon-dev \
+            libxcb-xinerama0
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ matrix.qt-version }}
+          cache: true
+          modules: qtbase qttools qtsql
+
+      - name: Configure tests
+        working-directory: tests
+        run: qmake tests.pro CONFIG+=release
+
+      - name: Build tests
+        working-directory: tests
+        run: make -j"$(nproc)"
+
+      - name: Run tests
+        working-directory: tests
+        run: ./release/SystemMonitoringTests -o -,txt

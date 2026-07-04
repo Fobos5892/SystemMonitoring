@@ -1,7 +1,8 @@
-QT += core testlib sql
+QT += core testlib sql gui
 
-CONFIG += console c++20 warn_on depend_includepath
+CONFIG += console warn_on depend_includepath
 CONFIG -= app_bundle
+include(../cxx_config.pri)
 
 TARGET = SystemMonitoringTests
 TEMPLATE = app

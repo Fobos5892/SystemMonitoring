@@ -186,8 +186,9 @@ using SensorDataBatch = QSharedPointer<const QVector<SensorData>>;
 
 ## Сборка
 
-- Qt 6.x, модули: `core`, `gui`, `widgets`, `sql`, `svg`
-- C++20
+- **Qt 6.x** (основная разработка) или **Qt 5.15** — см. CI ниже
+- Модули: `core`, `gui`, `widgets`, `sql`, `svg`
+- C++20 при Qt 6, C++17 при Qt 5 (`cxx_config.pri`)
 - Открыть `SystemMonitoring.pro` в Qt Creator или:
 
 ```bash
@@ -197,14 +198,25 @@ mingw32-make   # или nmake / make
 
 База `telemetry.db` создаётся рядом с исполняемым файлом при первом запуске.
 
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`) на каждый **push** и **pull request**:
+
+- runner: `ubuntu-latest`
+- матрица: **Qt 5.15.2** и **Qt 6.5.3**
+- сборка и запуск `tests/SystemMonitoringTests` (без GUI, `QCoreApplication`)
+
+Локально Qt 5.15 не нужен — достаточно пуша в репозиторий.
+
 ## Тесты
 
 Каталог `tests/`, проект `tests/tests.pro`:
 
 ```bash
 cd tests
-qmake && mingw32-make
-debug/SystemMonitoringTests.exe
+qmake CONFIG+=release && make -j$(nproc)
+./release/SystemMonitoringTests    # Linux / macOS
+# debug/SystemMonitoringTests.exe  # Windows (MinGW)
 ```
 
 Покрытие: доменная логика (`FilterQuerySpec`, `TelemetryMerge`), ViewModel, репозиторий/БД, симулятор, оркестратор потоков.

@@ -1,6 +1,7 @@
 QT += core gui widgets sql svg
 
-CONFIG += c++20 console
+CONFIG += console
+include(cxx_config.pri)
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.

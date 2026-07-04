@@ -13,6 +13,8 @@ int main(int argc, char *argv[])
     qRegisterMetaType<SensorDataBatch>();
     qRegisterMetaType<FilterQuerySpec>();
     qRegisterMetaType<Telemetry::AnchorSide>();
+    qRegisterMetaType<Telemetry::ConnectionStatus>();
+    qRegisterMetaType<Telemetry::ViewportZone>();
 
     QApplication a(argc, argv);
     a.setWindowIcon(QIcon(":/assets/app-icon.svg"));
