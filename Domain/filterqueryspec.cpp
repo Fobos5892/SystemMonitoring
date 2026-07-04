@@ -103,8 +103,10 @@ bool FilterQuerySpec::matches(const SensorData &record) const
         }
         return false;
     }
-    case Field::Timestamp:
-        return record.timestamp >= m_fromTimestampMs && record.timestamp <= m_toTimestampMs;
+    case Field::Timestamp: {
+        const qint64 timestampMs = static_cast<qint64>(record.timestamp);
+        return timestampMs >= m_fromTimestampMs && timestampMs <= m_toTimestampMs;
+    }
     }
     return false;
 }

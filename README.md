@@ -204,13 +204,40 @@ GitHub Actions (`.github/workflows/ci.yml`) на каждый **push** и **pull
 
 - runner: `ubuntu-latest`
 - матрица: **Qt 5.15.2** и **Qt 6.5.3**
-- сборка и запуск `tests/SystemMonitoringTests` (без GUI, `QCoreApplication`)
+- сборка и запуск тестов одной командой:
+
+```bash
+python scripts/build.py tests --release --run-tests
+```
 
 Локально Qt 5.15 не нужен — достаточно пуша в репозиторий.
+
+## Сборка (Python)
+
+Один скрипт для CI и локальной машины (`scripts/build.py`, только stdlib):
+
+```bash
+# тесты (как в CI)
+python scripts/build.py tests --release --run-tests
+
+# GUI-приложение
+python scripts/build.py app --qt-dir C:/Qt/6.11.1/mingw_64 --debug
+
+# приложение + тесты
+python scripts/build.py all --release --qt-dir C:/Qt/5.15.2/mingw81_64
+```
+
+`qmake` ищется в `PATH`, `QTDIR` или в `--qt-dir`. Артефакты: `build/py/<target>-<config>/`.
 
 ## Тесты
 
 Каталог `tests/`, проект `tests/tests.pro`:
+
+```bash
+python scripts/build.py tests --release --run-tests --qt-dir C:/Qt/6.11.1/mingw_64
+```
+
+Или вручную:
 
 ```bash
 cd tests

@@ -1,4 +1,5 @@
 #include "tst_dbdatacontroll.h"
+#include "Domain/metatypes.h"
 #include "Domain/sensorstatistics.h"
 #include "Domain/telemetrytypes.h"
 #include "testconstants.h"

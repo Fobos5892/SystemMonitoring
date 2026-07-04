@@ -41,3 +41,11 @@ compile_commands.json
 # Runtime database
 *.db
 telemetry.db
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+test_run.log

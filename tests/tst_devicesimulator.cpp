@@ -1,5 +1,6 @@
 #include "tst_devicesimulator.h"
 
+#include "Domain/metatypes.h"
 #include "Domain/telemetrytypes.h"
 #include "Infrastructure/Devices/devicesimulator.h"
 #include "testconstants.h"

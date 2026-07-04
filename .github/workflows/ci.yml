@@ -14,10 +14,7 @@ jobs:
       matrix:
         include:
           - qt-version: '5.15.2'
-            # Qt 5: qtbase входит в базовую установку; отдельно только доп. модули
-            qt-modules: 'qtsql'
           - qt-version: '6.5.3'
-            qt-modules: 'qtbase qttools qtsql'
 
     steps:
       - name: Checkout
@@ -32,21 +29,21 @@ jobs:
             libxkbcommon-dev \
             libxcb-xinerama0
 
-      - name: Install Qt
+      - name: Install Qt 5.15
+        if: matrix.qt-version == '5.15.2'
         uses: jurplel/install-qt-action@v4
         with:
-          version: ${{ matrix.qt-version }}
+          version: '5.15.2'
+          arch: gcc_64
           cache: true
-          modules: ${{ matrix.qt-modules }}
 
-      - name: Configure tests
-        working-directory: tests
-        run: qmake tests.pro CONFIG+=release
+      - name: Install Qt 6
+        if: matrix.qt-version == '6.5.3'
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.5.3'
+          cache: true
+          modules: qtbase qttools qtsql
 
-      - name: Build tests
-        working-directory: tests
-        run: make -j"$(nproc)"
-
-      - name: Run tests
-        working-directory: tests
-        run: ./release/SystemMonitoringTests -o -,txt
+      - name: Build and test
+        run: python scripts/build.py tests --release --run-tests
