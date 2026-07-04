@@ -12,7 +12,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        qt-version: ['5.15.2', '6.5.3']
+        include:
+          - qt-version: '5.15.2'
+            # Qt 5: qtbase входит в базовую установку; отдельно только доп. модули
+            qt-modules: 'qtsql'
+          - qt-version: '6.5.3'
+            qt-modules: 'qtbase qttools qtsql'
 
     steps:
       - name: Checkout
@@ -32,7 +37,7 @@ jobs:
         with:
           version: ${{ matrix.qt-version }}
           cache: true
-          modules: qtbase qttools qtsql
+          modules: ${{ matrix.qt-modules }}
 
       - name: Configure tests
         working-directory: tests
