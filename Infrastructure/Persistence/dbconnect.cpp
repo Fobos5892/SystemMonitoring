@@ -91,22 +91,23 @@ bool DatabaseConnectionManager::applyPerformancePragmas() {
     QSqlDatabase db = QSqlDatabase::database(m_connectionName);
     QSqlQuery query(db);
 
-    // Сверхбыстрый конкурентный режим записи без блокировки чтения
-    if (!query.exec("PRAGMA journal_mode = WAL;")) goto error;
-    // Асинхронная запись на диск (не ждем физического вращения шпинделя/памяти)
-    if (!query.exec("PRAGMA synchronous = OFF;")) goto error;
-    // Выделяем ~200 Мегабайт под кэш страниц в оперативной памяти
-    if (!query.exec(QStringLiteral("PRAGMA cache_size = %1;")
-                        .arg(DbConnection::SQLITE_PAGE_CACHE_KIB))) {
-        goto error;
+    const QStringList pragmas = {
+        "PRAGMA journal_mode = WAL;", // Сверхбыстрый конкурентный режим записи без блокировки чтения
+        "PRAGMA synchronous = OFF;",  // Асинхронная запись на диск
+        QStringLiteral("PRAGMA cache_size = %1;").arg(DbConnection::SQLITE_PAGE_CACHE_KIB), // ~200 МБ под кэш страниц
+        "PRAGMA temp_store = MEMORY;" // Временные файлы и таблицы только в ОЗУ
+    };
+
+    for (const QString &pragma : pragmas) {
+        if (query.exec(pragma)) {
+            continue;
+        }
+
+        m_lastError = query.lastError().text();
+        qCritical() << "Ошибка применения PRAGMA настроек скорости:" << m_lastError
+                    << "| PRAGMA:" << pragma;
+        return false;
     }
-    // Временные файлы и таблицы хранятся строго в ОЗУ
-    if (!query.exec("PRAGMA temp_store = MEMORY;")) goto error;
 
     return true;
-
-error:
-    m_lastError = query.lastError().text();
-    qCritical() << "Ошибка применения PRAGMA настроек скорости:" << m_lastError;
-    return false;
 }
